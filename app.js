@@ -1335,7 +1335,7 @@ function viewScoring() {
               <input type="file" accept="application/pdf,.docx,.doc,.xlsx,.xls" data-action="import-vendor-file" data-vid="${v.id}" style="display:none;">
             </label>
             <button class="btn btn-primary" data-action="gen-vendor-ai" data-vid="${v.id}">生成初评</button>
-            <span class="ai-status" data-vid="${v.id}" style="color:var(--muted);font-size:12px;">${hasResult ? '' : '粘贴/导入材料后自动生成，也可手动点此'}</span>
+            <span class="ai-status" data-vid="${v.id}" style="color:var(--muted);font-size:12px;">${(aiGenStatus[v.id]?.text) ? '' : (hasResult ? '' : '粘贴/导入材料后自动生成，也可手动点此')}</span>
           </div>
           ${hasAi ? `<div class="dimension-grid" style="margin-top:6px;">
             ${state.dimensions.map(d => {
@@ -1860,25 +1860,29 @@ function bindViewEvents() {
       const file = e.target.files[0];
       if (!file) return;
       const vid = el.dataset.vid;
-      const statusEl = viewEl.querySelector(`.ai-status[data-vid="${vid}"]`);
-      if (statusEl) statusEl.textContent = '正在读取文件…';
+      const setGenStatus = (text) => {
+        if (text === null) delete aiGenStatus[vid];
+        else aiGenStatus[vid] = { text };
+        safeRenderAll();
+      };
+      setGenStatus('正在读取文件…');
       try {
-        const text = await extractFileText(file, msg => { if (statusEl) statusEl.textContent = msg; });
-        const ta = viewEl.querySelector(`textarea[data-action="set-vendor-materials"][data-vid="${vid}"]`);
+        const text = await extractFileText(file, msg => setGenStatus(msg));
         if (!text.trim()) {
-          if (statusEl) statusEl.textContent = '抽不到文字（OCR 也无结果），请直接粘贴文字或换文字版文件';
+          setGenStatus('抽不到文字（OCR 也无结果），请直接粘贴文字或换文字版文件');
+          setTimeout(() => setGenStatus(null), 6000);
           return;
         }
-        if (ta) {
-          ta.value = text;
-          state.vendorMaterials = state.vendorMaterials || {};
-          state.vendorMaterials[vid] = text;
-          saveState();
-        }
-        if (statusEl) statusEl.textContent = `已从文件提取 ${text.length} 字，自动生成中…`;
+        state.vendorMaterials = state.vendorMaterials || {};
+        state.vendorMaterials[vid] = text;
+        saveState();
+        const ta = viewEl.querySelector(`textarea[data-action="set-vendor-materials"][data-vid="${vid}"]`);
+        if (ta) ta.value = text;
+        setGenStatus(`已从文件提取 ${text.length} 字，自动生成中…`);
         debounceGenVendorAi(vid, 400);
       } catch (err) {
-        if (statusEl) statusEl.textContent = '文件读取失败：' + err.message;
+        setGenStatus('文件读取失败：' + err.message);
+        setTimeout(() => setGenStatus(null), 8000);
       } finally {
         e.target.value = ''; // 允许重复选同一文件
       }
