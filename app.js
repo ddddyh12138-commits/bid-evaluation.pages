@@ -2032,7 +2032,7 @@ function bindViewEvents() {
   // 通用 action（view 内）
   viewEl.querySelectorAll('[data-action]').forEach(el => {
     const a = el.dataset.action;
-    if (['add-vendor','del-vendor','add-dim','del-dim','add-judge','del-judge','pick-vendor','pick-judge','parse-paste-modal','auto-end-modal','open-meeting','close-meeting','save-meeting','gen-vendor-ai','clear-vendor-ai','gen-report','gen-cross-analysis','download-report','archive-project','open-archive','del-archive','clone-from-archive','adopt-from-similar','filter-history','set-supplier-note','toggle-blacklist','copy-link','unlock-judge','advance-vendor','set-current-vendor','view-archive-cross'].includes(a)) {
+    if (['add-vendor','del-vendor','add-dim','del-dim','add-judge','del-judge','pick-vendor','pick-judge','parse-paste-modal','auto-end-modal','open-meeting','close-meeting','save-meeting','gen-vendor-ai','clear-vendor-ai','gen-report','gen-cross-analysis','download-report','archive-project','open-archive','del-archive','clone-from-archive','adopt-from-similar','filter-history','set-supplier-note','toggle-blacklist','copy-link','unlock-judge','advance-vendor','set-current-vendor','view-archive-cross','toggle-cross-detail'].includes(a)) {
       el.addEventListener('click', handleAction);
     }
   });
