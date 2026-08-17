@@ -195,9 +195,6 @@ function persistLocal() {
   dirty = true;
 }
 
-// 兼容旧名
-function saveLocal() { persistLocal(); }
-
 async function syncToCloud() {
   if (isSaving) return;
   if (!dirty) return;
@@ -252,7 +249,7 @@ function saveStateAndRender() {
   renderAll();
 }
 // 推 state 到云（非结构改动用）
-function saveStateCloud() {
+function syncToCloud() {
   syncToCloud();
 }
 
@@ -282,7 +279,7 @@ async function autoGenerateVendorAi(vid) {
     state.aiSuggestions[vid] = res.scores || {};
     state.qualResults[vid] = res.quals || [];
     persistLocal();
-    saveStateCloud();
+    syncToCloud();
     aiGenStatus[vid] = { text: `已生成 · ${((Date.now()-t0)/1000).toFixed(1)}s` };
     safeRenderAll();
     setTimeout(() => { if (aiGenStatus[vid]?.text?.startsWith('已生成')) { delete aiGenStatus[vid]; const el = viewEl?.querySelector(`.ai-status[data-vid="${vid}"]`); if (el) el.textContent = ''; } }, 3000);
@@ -782,7 +779,7 @@ async function buildReportDocx(md, ctx) {
       return new TableRow({
         children: cells.map(c => new TableCell({
           children: [new Paragraph({ children: [new TextRun({ text: c.trim(), bold: isHeader, size: 21, font: 'Microsoft YaHei' })] })],
-          shading: isHeader ? { fill: 'F5E8D6' } : undefined,
+          shading: isHeader ? { fill: 'E8EFFD' } : undefined,
         })),
       });
     });
@@ -824,7 +821,7 @@ async function buildReportDocx(md, ctx) {
       const level = Math.min(hMatch[1].length, 3);
       children.push(new Paragraph({
         heading: level === 1 ? HeadingLevel.HEADING_1 : level === 2 ? HeadingLevel.HEADING_2 : HeadingLevel.HEADING_3,
-        children: [new TextRun({ text: hMatch[2], bold: true, size: level === 1 ? 32 : level === 2 ? 28 : 24, color: '6B3A0A', font: 'Microsoft YaHei' })],
+        children: [new TextRun({ text: hMatch[2], bold: true, size: level === 1 ? 32 : level === 2 ? 28 : 24, color: '2563EB', font: 'Microsoft YaHei' })],
         spacing: { before: 200, after: 120 },
       }));
       continue;
@@ -1144,7 +1141,7 @@ async function archiveCurrentProject() {
   state.archives.unshift(archive);
   rebuildSupplierRegistry();
   persistLocal();
-  saveStateCloud();
+  syncToCloud();
   return archive;
 }
 
@@ -1570,7 +1567,7 @@ function viewScoring() {
       </div>
       ` : '<div class="empty-state" style="margin-bottom:14px;">未添加评委 — 技术分由评委外链端打分，可先填下方商务分与 AI 初评。</div>'}
 
-      <div style="margin-top:18px;padding:14px 16px;border-radius:14px;border:1px solid var(--line);background:rgba(192,131,40,.06);">
+      <div style="margin-top:18px;padding:14px 16px;border-radius:14px;border:1px solid var(--line);background:var(--gold-soft);">
         <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
           <strong style="color:var(--gold);">商务分</strong>
           <span style="color:var(--muted);font-size:12px;">播放量（万）：</span>
@@ -1580,7 +1577,7 @@ function viewScoring() {
         </div>
       </div>
 
-      <details style="margin-top:14px;border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:rgba(255,251,244,.4);" class="ai-block">
+      <details style="margin-top:14px;border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:#f8fafc;" class="ai-block">
         <summary style="cursor:pointer;font-size:13px;color:var(--gold);font-weight:600;display:flex;align-items:center;justify-content:space-between;list-style:none;">
           <span>供应商 AI 初评（仅供参考） ${hasResult ? '（已生成）' : ''}</span>
           <span style="display:flex;gap:8px;align-items:center;">
@@ -2162,7 +2159,7 @@ function bindViewEvents() {
   // 通用 action（view 内）
   viewEl.querySelectorAll('[data-action]').forEach(el => {
     const a = el.dataset.action;
-    if (['add-vendor','del-vendor','add-dim','del-dim','add-judge','del-judge','pick-vendor','pick-judge','parse-paste-modal','auto-end-modal','open-meeting','close-meeting','save-meeting','gen-vendor-ai','clear-vendor-ai','gen-report','gen-cross-analysis','download-report','archive-project','open-archive','del-archive','clone-from-archive','adopt-from-similar','filter-history','set-supplier-note','toggle-blacklist','copy-link','unlock-judge','advance-vendor','set-current-vendor','view-archive-cross','toggle-cross-detail','toggle-archive-cross','regen-archive-report'].includes(a)) {
+    if (['add-vendor','del-vendor','add-dim','del-dim','add-judge','del-judge','pick-vendor','pick-judge','parse-paste-modal','auto-end-modal','open-meeting','close-meeting','save-meeting','gen-vendor-ai','clear-vendor-ai','gen-report','gen-cross-analysis','download-report','archive-project','open-archive','del-archive','clone-from-archive','adopt-from-similar','filter-history','set-supplier-note','toggle-blacklist','copy-link','unlock-judge','advance-vendor','set-current-vendor','toggle-cross-detail','toggle-archive-cross','regen-archive-report'].includes(a)) {
       el.addEventListener('click', handleAction);
     }
   });
@@ -2225,7 +2222,7 @@ async function handleAction(e) {
       if (next) {
         setCurrentVendorId(next.id);
         persistLocal();
-        saveStateCloud();
+        syncToCloud();
         // 即时反馈：按钮已点击立即改文案，避免等待推云回写
         el.disabled = true; el.textContent = '已推进，同步中…';
         setTimeout(saveStateAndRender, 200);
@@ -2236,7 +2233,7 @@ async function handleAction(e) {
       if (isProjectLocked()) { alert('会议已结束，项目已锁定，无法更改开放供应商'); break; }
       setCurrentVendorId(el.dataset.vid);
       persistLocal();
-      saveStateCloud();
+      syncToCloud();
       saveStateAndRender();
       break;
     }
@@ -2294,7 +2291,7 @@ async function handleAction(e) {
         v.meetingId = document.getElementById('mId').value;
         v.meetingPwd = document.getElementById('mPwd').value;
         saveStateAndRender();
-        saveStateCloud();
+        syncToCloud();
       }
       closeMeetingModal();
       break;
@@ -2333,7 +2330,7 @@ async function handleAction(e) {
         state.aiSuggestions[vid] = res.scores || {};
         state.qualResults[vid] = res.quals || [];
         persistLocal();
-        saveStateCloud();
+        syncToCloud();
         delete aiGenStatus[vid];
         if (statusEl) statusEl.textContent = `已生成 · ${((Date.now()-t0)/1000).toFixed(1)}s`;
         safeRenderAll();
@@ -2355,7 +2352,7 @@ async function handleAction(e) {
       delete state.qualInputs?.[vid];
       delete state.vendorMaterials?.[vid];
       saveStateAndRender();
-      saveStateCloud();
+      syncToCloud();
       break;
     }
     case 'gen-report': {
@@ -2387,14 +2384,14 @@ async function handleAction(e) {
         const text = await generateCrossVendorAnalysis();
         state.crossVendorAnalysis = text;
         persistLocal();
-        saveStateCloud();
+        syncToCloud();
       } catch (e) {
         console.warn('生成供应商横评失败，尝试备用生成', e);
         try {
           const text = await generateCrossVendorAnalysisFallback();
           state.crossVendorAnalysis = text;
           persistLocal();
-          saveStateCloud();
+          syncToCloud();
         } catch (e2) {
           alert('生成失败：' + e2.message);
         }
@@ -2440,16 +2437,12 @@ async function handleAction(e) {
         ui.tab = 'history';
         persistLocal();
         // 先清云端 scores 表（旧 vendor id 的分数不能残留到新项目），再推新 state
-        apiPost('/admin', { action: 'clearScores' }).then(() => saveStateCloud());
+        apiPost('/admin', { action: 'clearScores' }).then(() => syncToCloud());
         renderAll();
       }).catch(e => {
         alert('归档失败：' + e.message);
         if (statusEl) statusEl.textContent = '';
       });
-      break;
-    }
-    case 'view-archive-cross': {
-      openArchiveCrossModal(el.dataset.aid);
       break;
     }
     case 'toggle-archive-cross': {
@@ -2482,7 +2475,7 @@ async function handleAction(e) {
       state.archives = (state.archives || []).filter(a => a.id !== aid);
       rebuildSupplierRegistry();
       saveStateAndRender();
-      saveStateCloud();
+      syncToCloud();
       break;
     }
     case 'clone-from-archive': {
@@ -2513,7 +2506,7 @@ async function handleAction(e) {
       lastReportMd = '';
       ui.tab = 'dashboard';
       persistLocal();
-      apiPost('/admin', { action: 'clearScores' }).then(() => saveStateCloud());
+      apiPost('/admin', { action: 'clearScores' }).then(() => syncToCloud());
       renderAll();
       break;
     }
@@ -2527,7 +2520,7 @@ async function handleAction(e) {
         cur.dimensionsSnapshot = structuredClone(src.dimensionsSnapshot || DEFAULT_DIMENSIONS);
         cur.tenderReqs = src.tenderReqs || '';
         persistLocal();
-        saveStateCloud();
+        syncToCloud();
         openArchiveDetail(currentArchiveId);
       }
       break;
@@ -2535,27 +2528,13 @@ async function handleAction(e) {
     case 'toggle-blacklist': {
       const key = el.dataset.key;
       const s = state.supplierRegistry?.[key];
-      if (s) { s.blacklist = !s.blacklist; saveStateAndRender(); saveStateCloud(); }
+      if (s) { s.blacklist = !s.blacklist; saveStateAndRender(); syncToCloud(); }
       break;
     }
     case 'dl-archive-report': {
       const arc = (state.archives || []).find(a => a.id === el.dataset.aid);
       if (!arc) break;
-      // 优先下载用户上传的原 Word 文件，没有再用 reportMd 现场生成
-      if (arc.reportFile?.dataUrl) {
-        try {
-          const r = await fetch(arc.reportFile.dataUrl);
-          const blob = await r.blob();
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = arc.reportFile.name || `${arc.name || '评标报告'}.docx`;
-          a.click();
-          URL.revokeObjectURL(url);
-        } catch (e) { alert('下载失败：' + e.message); }
-        break;
-      }
-      if (!arc.reportMd) { alert('该归档没有评标报告，请上传文件或重新生成'); break; }
+      if (!arc.reportMd) { alert('该归档没有评标报告，请重新生成'); break; }
       // 把归档里的评委签名图按 judgeId 聚合，供 [SIG:] 占位符查图
       const arcMeta = {};
       for (const j of (arc.judgeSnapshot || [])) {
@@ -2595,7 +2574,7 @@ async function handleAction(e) {
       try {
         const md = await buildArchiveReportMd(arc);
         arc.reportMd = md;
-        persistLocal(); saveStateCloud();
+        persistLocal(); syncToCloud();
         const doc = await buildReportDocx(md, { judgeMeta: tempMeta });
         const { Packer } = docx;
         Packer.toBlob(doc).then(blob => {
@@ -2782,12 +2761,6 @@ function setReportButtonOriginal() {
   btn.classList.add('btn-primary');
   btn.dataset.action = 'gen-report';
 }
-function resetReportButton() {
-  lastReportDoc = null;
-  lastReportMd = '';
-  hideReportDlButton();
-  setReportButtonOriginal();
-}
 reportDl.addEventListener('click', () => downloadReportDocx());
 const reportModal = document.getElementById('reportModal');
 const reportBody = document.getElementById('reportBody');
@@ -2930,16 +2903,15 @@ function openArchiveDetail(aid) {
 
     <h4>评标报告</h4>
     ${(() => {
-      const hasFile = !!arc.reportFile;
       const hasMd = !!arc.reportMd;
-      if (!hasFile && !hasMd) {
+      if (!hasMd) {
         // 没有报告：只显示重新生成按钮
         return `<div style="margin-top:4px;color:var(--muted);font-size:13px;">该归档未保存报告。
           <button class="btn btn-ghost" data-action="regen-archive-report" data-aid="${arc.id}" style="margin-left:8px;font-size:12px;">重新生成</button></div>`;
       }
       // 有报告：只显示下载按钮（不显示重新生成）
       return `<div style="margin-top:4px;">
-        ${hasMd ? `<details><summary>查看报告正文</summary><pre class="report-pre" style="max-height:40vh;margin-top:8px;">${escapeHtml(arc.reportMd)}</pre></details>` : ''}
+        <details><summary>查看报告正文</summary><pre class="report-pre" style="max-height:40vh;margin-top:8px;">${escapeHtml(arc.reportMd)}</pre></details>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
           <button class="btn btn-primary" data-action="dl-archive-report" data-aid="${arc.id}">下载 Word 报告</button>
         </div>
@@ -2978,18 +2950,7 @@ archiveModal.querySelectorAll('[data-action]').forEach(el => {
   el.addEventListener('click', handleAction);
 });
 
-// 历史横评二级弹层
-const archiveCrossModal = document.getElementById('archiveCrossModal');
-const archiveCrossBody = document.getElementById('archiveCrossBody');
-const archiveCrossClose = document.getElementById('archiveCrossClose');
-if (archiveCrossClose) archiveCrossClose.addEventListener('click', () => { archiveCrossModal.hidden = true; });
-if (archiveCrossModal) archiveCrossModal.addEventListener('click', (e) => { if (e.target === archiveCrossModal) archiveCrossModal.hidden = true; });
-function openArchiveCrossModal(aid) {
-  const arc = (state.archives || []).find(a => a.id === aid);
-  if (!arc || !arc.crossVendorAnalysis) return;
-  archiveCrossBody.textContent = arc.crossVendorAnalysis;
-  archiveCrossModal.hidden = false;
-}
+// 历史横评折叠：用 toggle-archive-cross 内联展开，不再用二级弹层
 
 // 评标报告静默生成：所有会议结束后且未生成过时，后台生成一次
 let silentReportTimer = null;

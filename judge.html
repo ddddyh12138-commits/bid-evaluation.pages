@@ -79,11 +79,6 @@
     .summary small { display: block; color: var(--muted); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; margin-bottom: 6px; }
     .summary strong { font-size: 30px; color: var(--gold); }
 
-    .save-bar { display: flex; align-items: center; gap: 12px; justify-content: center; margin-top: 14px; padding: 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel); }
-    .save-bar .save-btn { padding: 12px 32px; border-radius: 10px; border: 1px solid var(--gold); background: var(--gold-soft); color: var(--gold); font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; }
-    .save-bar .save-btn:active { transform: scale(.98); }
-    .save-bar .save-hint { color: var(--muted); font-size: 12px; }
-
     .dim-comment { width: 100%; margin-top: 8px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line); background: #f8fafc; color: var(--text); font-size: 12px; font-family: inherit; resize: vertical; min-height: 44px; }
     .dim-comment:focus { outline: none; border-color: var(--gold); }
     .dim-comment.required { border-color: var(--red); background: rgba(220,38,38,.05); }
@@ -93,16 +88,9 @@
     .vendor-comment .overall { width: 100%; padding: 10px; border-radius: 10px; border: 1px solid var(--line-strong); background: #fff; color: var(--text); font-size: 13px; font-family: inherit; resize: vertical; min-height: 80px; }
     .vendor-comment .required .overall { border-color: var(--red); background: rgba(220,38,38,.05); }
 
-    /* 签名区 */
-    .sign-section { margin-top: 16px; padding: 16px; border-radius: 12px; border: 1px solid var(--gold); background: var(--gold-soft); }
-    .sign-section h3 { margin: 0 0 10px; font-size: 15px; color: var(--gold); }
-    .sign-section .overall { width: 100%; margin-bottom: 12px; padding: 10px; border-radius: 10px; border: 1px solid var(--line-strong); background: #fff; color: var(--text); font-size: 13px; font-family: inherit; resize: vertical; min-height: 80px; }
-    .sign-section .overall:focus { outline: none; border-color: var(--gold); }
+    /* 签名区（autoSignModal 内联使用 sig-pad-wrap/sig-pad；独立块样式已废弃） */
     .sig-pad-wrap { background: #fff; border: 2px dashed var(--line-strong); border-radius: 12px; padding: 8px; position: relative; }
     .sig-pad { display: block; width: 100%; height: 160px; touch-action: none; cursor: crosshair; }
-    .sig-clear { margin-top: 6px; padding: 4px 12px; border-radius: 8px; border: 1px solid var(--line); background: #f8fafc; color: var(--muted); font-size: 12px; cursor: pointer; font-family: inherit; }
-    .sign-btn { display: block; width: 100%; margin-top: 12px; padding: 14px; border-radius: 12px; border: 1px solid var(--gold); background: var(--gold); color: #fff; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; }
-    .sign-btn:active { transform: scale(.98); }
 
     /* 手机全屏签名页 */
     .msign-page { display: flex; flex-direction: column; min-height: 100vh; min-height: 100dvh; padding: 12px; box-sizing: border-box; }
@@ -120,7 +108,6 @@
     .msign-clear { position: absolute; top: 8px; right: 8px; padding: 6px 14px; border-radius: 8px; border: 1px solid var(--line); background: #fff; color: var(--muted); font-size: 12px; cursor: pointer; font-family: inherit; }
     .msign-go { width: 100%; margin-top: 14px; padding: 16px; border-radius: 14px; border: 1px solid var(--gold); background: var(--gold); color: #fff; font-size: 16px; font-weight: 700; cursor: pointer; font-family: inherit; flex-shrink: 0; }
     .msign-go:active { transform: scale(.98); }
-    .sign-btn:disabled { opacity: .5; cursor: not-allowed; }
 
     /* 供应商列表完成状态 */
     .vendor-item { position: relative; }
@@ -165,7 +152,6 @@
     .sign-choice .sig-pad { height: 100% !important; width: 100% !important; min-height: 180px; }
     .sign-choice .sig-actions { margin-top: 6px; display:flex; justify-content:flex-end; }
     .sign-choice .sig-actions button { padding: 5px 12px; border-radius: 8px; border: 1px solid var(--line); background: #f8fafc; color: var(--muted); font-size: 12px; cursor: pointer; font-family: inherit; }
-    .sc-divider { text-align:center; color:var(--muted); font-size:12px; margin: 8px 0; }
     .auto-sign-box .sig-pad-wrap { background:#fff; border:2px dashed var(--line-strong); border-radius:12px; padding:8px; }
     .auto-sign-box .sig-pad { display: block; width: 100%; touch-action: none; cursor: crosshair; }
     .auto-sign-box .btn-group { display: flex; gap: 10px; justify-content: center; margin-top: 16px; }
@@ -178,8 +164,6 @@
       .sign-choice .sig-pad { min-height: 160px; }
     }
 
-    .offline-bar { position: fixed; top: 0; left: 0; right: 0; z-index: 80; padding: 8px 14px; background: var(--red); color: #fff; font-size: 12px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,.15); }
-    .offline-bar[hidden] { display: none; }
 
     .empty { padding: 40px; text-align: center; color: var(--muted); border: 1px dashed var(--line); border-radius: 14px; }
     .saved { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); padding: 8px 16px; border-radius: 999px; background: rgba(22,163,74,.15); color: var(--green); font-size: 12px; border: 1px solid rgba(22,163,74,.30); opacity: 0; transition: opacity .3s; }
@@ -215,11 +199,9 @@
     .sign-choice .sig-pad-wrap { padding: 6px; height: 100%; }
     .sign-choice .sig-pad { height: 320px !important; width: 100% !important; }
     .sign-choice .sig-actions { margin-top: 4px; text-align: left; }
-    .sc-divider { text-align:center; color:var(--muted); font-size:12px; margin: 10px 0; }
   </style>
 </head>
 <body>
-  <div class="offline-bar" id="offlineBar" hidden>离线</div>
   <div class="topbar" id="topbar">
     <button class="back" id="topbarBack">← 返回列表</button>
     <div class="title" id="topbarTitle"></div>

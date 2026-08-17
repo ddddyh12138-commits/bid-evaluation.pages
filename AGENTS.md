@@ -84,6 +84,22 @@ npx wrangler pages deploy . --project-name bid-evaluation --branch main --commit
 
 `functions/api/state.js` 的 `safeState` 必须包含 `currentVendorByDate`，否则评委端 `getCurrentVendorIndex` 找不到推进状态，签名按钮/开放判断全失效。
 
+### 10. 改完别留死代码，别留旧文案
+
+本项目经历过多次来回改动（五维度总分列加了又删、上传报告按钮加了又删、横评折叠从 details 改成 extract 函数、UI 从奶油金改白底蓝），每次都容易留下没人调用的函数 / 不再渲染的 CSS 类 / 写在说明里但功能已删的文案。**改完务必 grep 一遍**：
+- 删了某 `data-action` 的 DOM，就同时删 `bindViewEvents` 白名单数组里对应项和 `handleAction` 里的 case。
+- 删了某功能，就 grep 函数名/CSS 类名是否还有定义但无引用；有就一起删，别留"以后可能用得上"。
+- 改了报告/表格结构，记得同步 `index.html` helpModal 里的说明文字（"含技术合计、五维度总分"这种过时描述就是漏改的）。
+- 改了主色（CSS 变量），grep 旧色值硬编码（如 `#c08328` / `rgba(192,131,40,…)` / Word 里的 `F5E8D6` `6B3A0A`），它们不走 CSS 变量不会自动跟变。
+
+### 11. 事件委托调用要补 `currentTarget`
+
+`archiveModal` 等动态弹层里用 `handleAction({ currentTarget: btn, target: e.target })` 手动转发点击事件。直接传 DOM 元素 `handleAction(btn)` 会导致 `e.currentTarget` 为 undefined，`toggle-archive-cross` 这类依赖 `el = e.currentTarget` 的 action 拿不到 dataset，按钮点了没反应。
+
+### 12. UI 主题只改 CSS 变量，别动逻辑
+
+UI 重设计（白底蓝主色）只改 `index.html` / `judge.html` 的 `:root` 变量与样式段，`app.js` / `judge.js` 一行不碰。颜色全部走 `var(--gold)` 等变量，改一处全站生效。注意签名 canvas 的 `strokeStyle` 和 Word 报告里的 `shading.fill` / `color` 是硬编码十六进制色，不读 CSS 变量，需单独替换。
+
 ## 提交流程
 
 改完代码：
