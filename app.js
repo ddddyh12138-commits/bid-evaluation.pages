@@ -1646,19 +1646,17 @@ function viewDashboard() {
         })()}
       </div>
       <div class="cross-vendor-box" style="margin-top:14px;">
-        <details>
-          <summary style="cursor:pointer;font-size:13px;color:var(--gold);font-weight:600;display:flex;align-items:center;justify-content:space-between;list-style:none;">
-            <span>供应商横评 ${crossAnalysis ? '· 已生成' : ''}</span>
-            <span class="toggle-icon" style="font-size:11px;color:var(--muted);">展开 ▾</span>
-          </summary>
-          <div style="margin-top:10px;">
-          ${crossAnalysis
-            ? `<div class="cross-vendor-summary" style="color:var(--text);font-size:13px;margin-bottom:8px;line-height:1.7;">${formatCrossSummary(extractCrossRecommendation(crossAnalysis))}</div>
-               <div class="cross-vendor-content" style="display:none;">${formatCrossFull(crossAnalysis)}</div>
-               <button class="btn btn-ghost" data-action="toggle-cross-detail" style="font-size:12px;padding:4px 10px;">展开查看完整横评</button>`
-            : `<div class="anomaly-ok">${hasAiEnough ? '点击右上角「生成供应商横评」按钮生成横向对比分析。' : '所有供应商都上传材料后，可一键生成横评（评分工作台右上角按钮）。'}</div>`}
-          </div>
-        </details>
+        ${crossAnalysis
+          ? `<div data-action="toggle-cross-detail" style="cursor:pointer;">
+              <div style="display:flex;align-items:center;justify-content:space-between;font-size:13px;color:var(--gold);font-weight:600;">
+                <span>供应商横评 · 已生成</span>
+                <span class="toggle-icon" style="font-size:11px;color:var(--muted);">展开 ▾</span>
+              </div>
+              <div class="cross-vendor-summary" style="color:var(--text);font-size:13px;margin-top:8px;line-height:1.7;">${formatCrossSummary(extractCrossRecommendation(crossAnalysis))}</div>
+            </div>
+            <div class="cross-vendor-content" style="display:none;margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);">${formatCrossFull(crossAnalysis)}</div>`
+          : `<div style="font-size:13px;color:var(--gold);font-weight:600;margin-bottom:6px;">供应商横评</div>
+             <div class="anomaly-ok">${hasAiEnough ? '点击右上角「生成供应商横评」按钮生成横向对比分析。' : '所有供应商都上传材料后，可一键生成横评（评分工作台右上角按钮）。'}</div>`}
       </div>
     </section>
 
@@ -2276,12 +2274,14 @@ async function handleAction(e) {
       break;
     }
     case 'toggle-cross-detail': {
-      const box = e.target.closest('.cross-vendor-box') || e.target.closest('details');
-      const detail = box && box.querySelector('.cross-vendor-content');
+      const box = e.target.closest('.cross-vendor-box');
+      if (!box) break;
+      const detail = box.querySelector('.cross-vendor-content');
+      const icon = box.querySelector('.toggle-icon');
       if (!detail) break;
       const shown = detail.style.display !== 'none';
       detail.style.display = shown ? 'none' : 'block';
-      e.target.textContent = shown ? '展开查看完整横评' : '收起';
+      if (icon) icon.textContent = shown ? '展开 ▾' : '收起 ▴';
       break;
     }
     case 'download-report':
