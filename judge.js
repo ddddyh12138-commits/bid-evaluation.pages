@@ -63,6 +63,8 @@ async function load() {
       vendorComments = {};
     }
     cloudWasLocked = !!myMeta.locked;
+    // 清掉本地残留的已删供应商/维度的分数与总评
+    filterLocalByCurrentState();
     // 扫码纯签名模式：直接进签名页，不加载列表/分数
     if (signMode) { setTimeout(openMobileSignPage, 50); return; }
     // 总评：本地非空保留，云端补充
@@ -99,6 +101,8 @@ async function refreshState() {
     const fresh = data.state;
     if (!state || !fresh) return;
     state.vendors = fresh.vendors;
+    state.dimensions = fresh.dimensions;
+    state.judges = fresh.judges;
     state.aiSuggestions = fresh.aiSuggestions;
     state.crossVendorAnalysis = fresh.crossVendorAnalysis || '';
     state.project = fresh.project;
@@ -109,6 +113,8 @@ async function refreshState() {
       vendorComments = {};
     }
     cloudWasLocked = !!myMeta.locked;
+    // 清掉本地残留的已删供应商/维度的分数与总评
+    filterLocalByCurrentState();
     // 本地非空保留，云端补充
     vendorComments = mergeVendorComments(data.vendorComments);
     if (activeVendorId) {
@@ -151,6 +157,22 @@ function hasLocalVendorComments() {
 function hasLocalScores() {
   if (!myJudgeId) return false;
   return Object.values(scores).some(v => v?.[myJudgeId] && Object.keys(v[myJudgeId]).length > 0);
+}
+// 过滤掉本地残留的、云端已删除的供应商 / 维度，避免提交孤儿分数/总评
+function filterLocalByCurrentState() {
+  if (!state) return;
+  const vIds = new Set((state.vendors || []).map(v => v.id));
+  const dIds = new Set((state.dimensions || []).map(d => d.id));
+  for (const vId of Object.keys(scores)) {
+    if (!vIds.has(vId)) { delete scores[vId]; continue; }
+    const my = scores[vId]?.[myJudgeId];
+    if (my) {
+      for (const dId of Object.keys(my)) if (!dIds.has(dId)) delete my[dId];
+    }
+  }
+  for (const vId of Object.keys(vendorComments)) {
+    if (!vIds.has(vId)) delete vendorComments[vId];
+  }
 }
 function myTotal(vId) {
   if (!state) return 0;
@@ -970,6 +992,8 @@ async function doModalSign() {
   if (btn) { btn.disabled = true; btn.textContent = '提交中…'; }
   const back = document.getElementById('autoSignBack');
   if (back) back.disabled = true;
+  // 提交前过滤掉本地残留的、云端已删除的供应商/维度，避免孤儿分数复活
+  filterLocalByCurrentState();
   // 本机手写路径：提交前确保最新分数已暂存到云端（防本地丢失）
   try {
     await fetch('/api/judge', {

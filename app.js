@@ -178,7 +178,8 @@ async function pullCloud() {
       migrateMaterials();
     }
     const after = JSON.stringify({ s: state, sc: scores });
-    persistLocal();
+    // 拉来的云端数据原样落本地即可，不要标脏（否则无编辑关页面会原样回推，覆盖其他设备在此期间的改动）
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ state, scores, judgeMeta, vendorComments, ui }));
     if (before !== after) renderAll();
   } catch (e) {
     console.warn('云端拉取失败，用本地', e);
@@ -215,22 +216,27 @@ async function syncToCloud() {
 }
 
 // 关页面/隐藏时把本地改动推云，保证跨设备不丢
-let exitFlushed = false;
+// exitFlushed 用 time 限制：只在 5s 内防 pagehide+beforeunload 重入，切回标签可继续编辑再推
+let exitFlushedAt = 0;
 function flushOnExit() {
-  if (exitFlushed) return;  // pagehide + beforeunload 可能都触发，防重入
+  if (Date.now() - exitFlushedAt < 5000) return;  // 5s 内防重入
   if (!dirty) return;
   if (isSaving) return;  // syncToCloud 正在飞，相信它会带上最新 state，避免并发覆盖
   const payload = JSON.stringify({ patch: state });
   try {
     navigator.sendBeacon('/api/admin', new Blob([payload], { type: 'application/json' }));
     dirty = false;
-    exitFlushed = true;
+    exitFlushedAt = Date.now();
   } catch (e) {
     // sendBeacon 抛异常（如构造 Blob 失败）时 fall back，但页面可能已卸载，同步失败也不致命
     try { syncToCloud(); } catch (_) {}
   }
 }
-document.addEventListener('visibilitychange', () => { if (document.hidden) flushOnExit(); });
+// 切回标签时复位防重入计时，让后续编辑能正常推云
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) flushOnExit();
+  else exitFlushedAt = 0;
+});
 window.addEventListener('beforeunload', flushOnExit);
 window.addEventListener('pagehide', flushOnExit);
 
