@@ -416,12 +416,12 @@ async function aiChat(prompt, options = {}) {
 function extractCrossRecommendation(text) {
   if (!text) return '';
   const t = String(text).trim();
-  // 优先取「综合结论」段：从"综合结论"标记到下一个同级标题或第一个空行
+  // 优先取「综合结论」段：从"综合结论"标记到下一个同级 #### 或 ## / ### 标题
   const m = t.match(/综合结论[\s\S]*/);
   let seg = m ? m[0] : '';
   if (seg) {
-    // 截到下一个 ## 或 ### 标题（若有）
-    const nextHead = seg.search(/\n#{2,3}\s/);
+    // 截到下一个标题（## / ### / ####）
+    const nextHead = seg.search(/\n#{2,4}\s/);
     if (nextHead > 0) seg = seg.slice(0, nextHead);
     return seg.trim();
   }
@@ -430,6 +430,19 @@ function extractCrossRecommendation(text) {
   if (m2) return m2[0].trim();
   const firstLine = t.split(/\n/).find(l => l.trim()) || t;
   return firstLine.trim().slice(0, 120);
+}
+
+// 横评正文去掉「综合结论」段后的剩余内容，作为展开后才显示的部分
+function extractCrossRest(text) {
+  if (!text) return '';
+  const t = String(text).trim();
+  const idx = t.search(/综合结论/);
+  if (idx === -1) return '';
+  // 找综合结论段之后的第一个标题位置
+  const after = t.slice(idx);
+  const nextHead = after.search(/\n#{2,4}\s/);
+  if (nextHead === -1) return ''; // 没有后续标题
+  return t.slice(idx + nextHead).trim();
 }
 
 // 横评摘要格式化：保留 markdown 标题/加粗，转 HTML
@@ -449,12 +462,13 @@ function formatCrossSummary(md) {
 function formatCrossFull(md) {
   if (!md) return '';
   let html = escapeHtml(md);
-  html = html.replace(/^###\s+(.+)$/gm, '<h4 style="color:var(--gold);margin:10px 0 4px;">$1</h4>');
+  html = html.replace(/^####\s+(.+)$/gm, '<h5 style="color:var(--gold);margin:10px 0 4px;font-size:13px;">$1</h5>');
+  html = html.replace(/^###\s+(.+)$/gm, '<h4 style="color:var(--gold);margin:10px 0 4px;font-size:13px;">$1</h4>');
   html = html.replace(/^##\s+(.+)$/gm, '<h3 style="color:var(--gold);margin:12px 0 6px;">$1</h3>');
   html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
   html = html.replace(/\n/g, '<br>');
   // 把标题前后的 <br> 去掉，避免空行过大
-  html = html.replace(/<br>(<h[34])/g, '$1').replace(/(<\/h[34]>)<br>/g, '$1');
+  html = html.replace(/<br>(<h[345])/g, '$1').replace(/(<\/h[345]>)<br>/g, '$1');
   return html;
 }
 
@@ -1654,7 +1668,7 @@ function viewDashboard() {
               </div>
               <div class="cross-vendor-summary" style="color:var(--text);font-size:13px;margin-top:8px;line-height:1.7;">${formatCrossSummary(extractCrossRecommendation(crossAnalysis))}</div>
             </div>
-            <div class="cross-vendor-content" style="display:none;margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);">${formatCrossFull(crossAnalysis)}</div>`
+            <div class="cross-vendor-content" style="display:none;margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);">${formatCrossFull(extractCrossRest(crossAnalysis))}</div>`
           : `<div style="font-size:13px;color:var(--gold);font-weight:600;margin-bottom:6px;">供应商横评</div>
              <div class="anomaly-ok">${hasAiEnough ? '点击右上角「生成供应商横评」按钮生成横向对比分析。' : '所有供应商都上传材料后，可一键生成横评（评分工作台右上角按钮）。'}</div>`}
       </div>
