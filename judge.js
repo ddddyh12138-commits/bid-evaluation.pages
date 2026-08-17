@@ -890,6 +890,12 @@ function clearModalSig() {
 async function doModalSign() {
   if (myMeta.locked) { alert('已签名锁定'); return; }
   if (!modalSigInk) { alert('请手写签名'); return; }
+  const btn = document.getElementById('autoSignGo');
+  // 防重复点击：按钮已禁用则忽略
+  if (btn && btn.disabled) return;
+  if (btn) { btn.disabled = true; btn.textContent = '提交中…'; }
+  const back = document.getElementById('autoSignBack');
+  if (back) back.disabled = true;
   // 本机手写路径：提交前确保最新分数已暂存到云端（防本地丢失）
   try {
     await fetch('/api/judge', {
@@ -899,10 +905,13 @@ async function doModalSign() {
     });
   } catch {}
   const signature = exportSig(modalSigPad);
-  if (signature.length > 200000) { alert('签名数据过大，请简化签名'); return; }
+  if (signature.length > 200000) {
+    alert('签名数据过大，请简化签名');
+    if (btn) { btn.disabled = false; btn.textContent = '本机签名并提交'; }
+    if (back) back.disabled = false;
+    return;
+  }
 
-  const btn = document.getElementById('autoSignGo');
-  if (btn) { btn.disabled = true; btn.textContent = '提交中…'; }
   try {
     const r = await fetch('/api/judge', {
       method: 'POST',
@@ -910,17 +919,23 @@ async function doModalSign() {
       body: JSON.stringify({ action: 'submit', signature, scores, vendorComments }),
     });
     const d = await r.json();
-    if (!d.ok) { alert(d.error || '提交失败'); return; }
+    if (!d.ok) {
+      alert(d.error || '提交失败');
+      if (btn) { btn.disabled = false; btn.textContent = '本机签名并提交'; }
+      if (back) back.disabled = false;
+      return;
+    }
     stopSignWait();
     myMeta = { signature, signedAt: Date.now(), locked: true };
     saveLocal();
     sessionStorage.setItem(SIGNED_FLAG_KEY, '1');
     document.getElementById('autoSignModal').hidden = true;
     render();
+    // 成功：按钮保持禁用，不恢复（避免误点二次提交）
   } catch (e) {
-    alert('网络错误，提交未成功');
-  } finally {
+    alert('网络错误，提交未成功，请重试');
     if (btn) { btn.disabled = false; btn.textContent = '本机签名并提交'; }
+    if (back) back.disabled = false;
   }
 }
 
