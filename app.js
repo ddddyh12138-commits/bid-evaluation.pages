@@ -412,6 +412,18 @@ async function aiChat(prompt, options = {}) {
   return data.choices?.[0]?.message?.content?.trim() || '';
 }
 
+// 从横评正文里抽「最推荐哪家 + 理由」用作折叠摘要
+function extractCrossRecommendation(text) {
+  if (!text) return '';
+  const t = String(text).trim();
+  // 优先匹配「最推荐 XXX」/「推荐 XXX」句式，取到第一个句号/换行
+  const m = t.match(/(最推荐|综合推荐|推荐选择?|首选)[^。\n]{0,120}/);
+  if (m) return m[0].trim();
+  // 兜底：取第一段前 80 字
+  const firstLine = t.split(/\n/).find(l => l.trim()) || t;
+  return firstLine.trim().slice(0, 80);
+}
+
 // 供应商横评：一次性汇总所有已评供应商的横向对比
 async function generateCrossVendorAnalysis() {
   const cfg = state.aiConfig || {};
@@ -1515,8 +1527,18 @@ function viewDashboard() {
         })()}
       </div>
       <div class="cross-vendor-box" style="margin-top:14px;">
-        <strong style="font-size:13px;color:var(--gold);">供应商横评</strong>
-        ${crossAnalysis ? `<div class="cross-vendor-content">${escapeHtml(crossAnalysis).replace(/\n/g, '<br>')}</div>` : `<div class="anomaly-ok">${hasAiEnough ? '点击右上角「生成供应商横评」按钮生成横向对比分析。' : '所有供应商都上传材料后，可一键生成横评（评分工作台右上角按钮）。'}</div>`}
+        <details ${crossAnalysis ? '' : 'open'}>
+          <summary style="cursor:pointer;font-size:13px;color:var(--gold);font-weight:600;display:flex;align-items:center;justify-content:space-between;list-style:none;">
+            <span>供应商横评 ${crossAnalysis ? '· 已生成' : ''}</span>
+            <span class="toggle-icon" style="font-size:11px;color:var(--muted);">${crossAnalysis ? '展开 ▾' : ''}</span>
+          </summary>
+          <div style="margin-top:10px;">
+          ${crossAnalysis
+            ? `<div style="color:var(--muted);font-size:12px;margin-bottom:8px;"><strong style="color:var(--text);">最推荐：</strong>${escapeHtml(extractCrossRecommendation(crossAnalysis))}</div>
+               <div class="cross-vendor-content">${escapeHtml(crossAnalysis).replace(/\n/g, '<br>')}</div>`
+            : `<div class="anomaly-ok">${hasAiEnough ? '点击右上角「生成供应商横评」按钮生成横向对比分析。' : '所有供应商都上传材料后，可一键生成横评（评分工作台右上角按钮）。'}</div>`}
+          </div>
+        </details>
       </div>
     </section>
 
