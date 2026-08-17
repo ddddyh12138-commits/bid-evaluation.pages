@@ -838,7 +838,7 @@ function effectiveStatus(v) {
 }
 function lockReason(v) {
   if (isProjectLocked()) return '会议已结束，项目已锁定';
-  if (getCurrentVendorIndex() === -1) return '管理员未开始讲标';
+  if (getCurrentVendorIndex() === -1) return '未开始讲标';
   return '尚未开放评分';
 }
 
