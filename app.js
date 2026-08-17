@@ -566,36 +566,60 @@ ${vendorBlocks}
   // 追加评委签字段
   const signSection = buildSignSectionMd();
   const fullMd = signSection ? content + '\n\n' + signSection : content;
-  const doc = buildReportDocx(fullMd);
+  const doc = await buildReportDocx(fullMd);
   return { md: fullMd, doc };
 }
 
-// 生成「评委签字」段 Markdown（已签名评委显示时间 + 每家供应商总评）
+// 生成「评委评分」段 Markdown：每个评委签名图 + 每家供应商各一级维度评分表 + 总评
+// 签名图通过占位符 [SIG:judgeId] 嵌入，buildReportDocx 再替换成 Word 图片
 function buildSignSectionMd() {
   if (!state.judges || !state.judges.length) return '';
-  const lines = ['## 评委签字'];
+  const lines = ['## 评委评分'];
   for (const j of state.judges) {
     const m = judgeMeta[j.id] || {};
     if (m.locked) {
       const t = m.signedAt ? new Date(m.signedAt).toLocaleString('zh-CN', { hour12: false, timeZone: 'Asia/Shanghai' }) : '';
-      const sub = ['签名时间：' + t];
-      if (state.vendors) {
+      lines.push(`### ${j.name}`);
+      lines.push('');
+      if (m.signature) lines.push(`[SIG:${j.id}]`);
+      lines.push(`签名时间：${t}`);
+      lines.push('');
+      // 每家供应商各一级维度评分表
+      if (state.vendors && state.vendors.length) {
+        const header = ['供应商', ...state.dimensions.map(d => d.name), '技术合计'].join(' | ');
+        const sep = ['---', ...state.dimensions.map(() => '---'), '---'].join(' | ');
+        lines.push(header);
+        lines.push(sep);
+        for (const v of state.vendors) {
+          const vals = state.dimensions.map(d => {
+            const s = getScore(v.id, j.id, d.id);
+            return (s === undefined || s === null || s === '') ? '—' : Number(s).toFixed(1);
+          });
+          const total = judgeTotalForVendor(v.id, j.id).toFixed(1);
+          lines.push([v.name, ...vals, total].join(' | '));
+        }
+        lines.push('');
+      }
+      // 各供应商总评
+      if (state.vendors && state.vendors.length) {
+        lines.push('**总评：**');
         for (const v of state.vendors) {
           const c = vendorComments[v.id]?.[j.id] || '';
-          sub.push(`- ${v.name}：${c || '（未填写总评）'}`);
+          lines.push(`- ${v.name}：${c || '（未填写总评）'}`);
         }
       }
-      lines.push(`### ${j.name}（已签名）\n\n${sub.join('\n')}`);
     } else {
       lines.push(`### ${j.name}（未签名）`);
     }
+    lines.push('');
   }
-  return lines.join('\n\n');
+  return lines.join('\n').trim();
 }
 
 // 把 Markdown 报告转成 Word 文档对象（docx.js）
-function buildReportDocx(md) {
-  const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, Table, TableCell, TableRow, WidthType, BorderStyle } = docx;
+// 签名占位符 [SIG:judgeId] 会被替换成签名图片（dataURL → ImageRun）
+async function buildReportDocx(md) {
+  const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, Table, TableCell, TableRow, WidthType, BorderStyle, ImageRun } = docx;
   const children = [];
   const lines = md.split('\n');
   let inTable = false;
@@ -619,6 +643,23 @@ function buildReportDocx(md) {
 
   for (let raw of lines) {
     raw = raw.trimEnd();
+    // 签名图片占位符
+    const sigMatch = raw.match(/^\[SIG:(.+?)\]$/);
+    if (sigMatch) {
+      const jid = sigMatch[1];
+      const m = judgeMeta[jid] || {};
+      if (m.signature) {
+        try {
+          const data = await dataUrlToU8(m.signature);
+          const dims = pngOrJpegDims(m.signature, data);
+          children.push(new Paragraph({
+            children: [new ImageRun({ data, transformation: { width: dims.w, height: dims.h }, type: m.signature.includes('image/png') ? 'png' : 'jpg' })],
+            spacing: { after: 80 },
+          }));
+        } catch (e) { /* 图片插入失败则跳过，保留签名时间文字 */ }
+      }
+      continue;
+    }
     // 表格：行首须有 |，避免普通段落以 | 结尾被误判
     if (/^\|.+\|$/.test(raw)) {
       const cells = raw.split('|').slice(1, -1).map(s => s.trim()).filter((_, i, a) => !(i === 0 && a[0] === ''));
@@ -659,6 +700,41 @@ function buildReportDocx(md) {
       children,
     }],
   });
+}
+
+// dataURL → Uint8Array
+async function dataUrlToU8(dataUrl) {
+  const r = await fetch(dataUrl);
+  const buf = await r.arrayBuffer();
+  return new Uint8Array(buf);
+}
+
+// 从签名图片字节里读宽高（支持 PNG/JPEG），并按宽度上限 360px 等比缩放到 Word 像素
+function pngOrJpegDims(dataUrl, data) {
+  let w = 0, h = 0;
+  if (dataUrl.includes('image/png')) {
+    // PNG 宽高在偏移 16/20（big-endian）
+    w = (data[16] << 24 | data[17] << 16 | data[18] << 8 | data[19]) >>> 0;
+    h = (data[20] << 24 | data[21] << 16 | data[22] << 8 | data[23]) >>> 0;
+  } else if (dataUrl.includes('image/jpeg') || dataUrl.includes('image/jpg')) {
+    // JPEG：扫 SOF0/SOF2 标记读高宽
+    let i = 2;
+    while (i < data.length - 9) {
+      if (data[i] !== 0xFF) { i++; continue; }
+      const marker = data[i + 1];
+      if (marker === 0xC0 || marker === 0xC2) {
+        h = (data[i + 5] << 8) | data[i + 6];
+        w = (data[i + 7] << 8) | data[i + 8];
+        break;
+      }
+      const len = (data[i + 2] << 8) | data[i + 3];
+      i += 2 + len;
+    }
+  }
+  if (!w || !h) { w = 360; h = 150; }
+  const maxW = 360;
+  if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
+  return { w, h };
 }
 
 
@@ -895,6 +971,10 @@ async function archiveCurrentProject() {
           vendorName: v.name,
           techTotal: judgeTotalForVendor(v.id, j.id),
           overallComment: vendorComments[v.id]?.[j.id] || '',
+          dimScores: state.dimensions.map(d => ({
+            dimName: d.name,
+            value: getScore(v.id, j.id, d.id) ?? '',
+          })),
         })),
       };
     }),
@@ -2270,7 +2350,7 @@ async function handleAction(e) {
       const arc = (state.archives || []).find(a => a.id === el.dataset.aid);
       if (!arc || !arc.reportMd) break;
       try {
-        const doc = buildReportDocx(arc.reportMd);
+        const doc = await buildReportDocx(arc.reportMd);
         const { Packer } = docx;
         Packer.toBlob(doc).then(blob => {
           const url = URL.createObjectURL(blob);
@@ -2565,15 +2645,32 @@ function openArchiveDetail(aid) {
         const time = j.signedAt ? new Date(j.signedAt).toLocaleString('zh-CN', { hour12: false, timeZone: 'Asia/Shanghai' }) : '未签名';
         const overalls = (j.scores || []).filter(s => s.overallComment)
           .map(s => `<div style="margin-top:6px;"><strong>${escapeHtml(s.vendorName)}：</strong>${escapeHtml(s.overallComment)}</div>`).join('');
+        // 每家供应商各一级维度评分表
+        const dimHeads = (arc.dimensionsSnapshot || []).map(d => `<th>${escapeHtml(d.name)}</th>`).join('');
+        const dimBody = (arc.vendorSnapshot || []).map(vs => {
+          const s = (j.scores || []).find(ss => ss.vendorName === vs.name);
+          const cells = (arc.dimensionsSnapshot || []).map(d => {
+            const ds = (s?.dimScores || []).find(x => x.dimName === d.name);
+            const val = ds?.value;
+            return `<td>${(val === undefined || val === null || val === '') ? '—' : Number(val).toFixed(1)}</td>`;
+          }).join('');
+          return `<tr><td>${escapeHtml(vs.name)}</td>${cells}<td>${(s?.techTotal || 0).toFixed(1)}</td></tr>`;
+        }).join('');
+        const dimTable = (dimHeads && (arc.vendorSnapshot || []).length) ? `
+          <table class="mini-table" style="margin-top:8px;">
+            <thead><tr><th>供应商</th>${dimHeads}<th>技术合计</th></tr></thead>
+            <tbody>${dimBody}</tbody>
+          </table>` : '';
         return `
           <div class="judge-sig-card">
             <div class="js-head"><strong>${escapeHtml(j.name)}</strong><span class="js-time">${escapeHtml(time)}</span></div>
             ${sig ? `<img src="${sig}" class="js-img" alt="签名">` : '<div class="js-empty">未签名</div>'}
-            ${overalls ? `<div class="js-overalls">${overalls}</div>` : ''}
+            ${dimTable}
+            ${overalls ? `<div class="js-overalls"><strong>总评：</strong>${overalls}</div>` : ''}
           </div>`;
       }).join('');
       if (!rows) return '';
-      return `<h4>评委签字</h4><div class="judge-sig-list">${rows}</div>`;
+      return `<h4>评委评分</h4><div class="judge-sig-list">${rows}</div>`;
     })()}
 
     ${arc.crossVendorAnalysis ? `<h4>供应商横评</h4><div style="display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap;"><div style="flex:1;min-width:240px;color:var(--text);font-size:13px;line-height:1.8;max-height:120px;overflow:hidden;white-space:pre-wrap;position:relative;">${escapeHtml(arc.crossVendorAnalysis.slice(0, 200))}${arc.crossVendorAnalysis.length > 200 ? '…' : ''}</div><button class="btn" data-action="view-archive-cross" data-aid="${arc.id}">查看完整横评</button></div>` : ''}
