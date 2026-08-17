@@ -1,0 +1,8 @@
+name = "bid-evaluation"
+compatibility_date = "2024-09-01"
+pages_build_output_dir = "."
+
+[[d1_databases]]
+binding = "DB"
+database_name = "bid-evaluation"
+database_id = "991a8dee-4825-4364-964c-b819365d840e"

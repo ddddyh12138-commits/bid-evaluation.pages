@@ -1,0 +1,19 @@
+# build / deps
+node_modules/
+.env
+.dev.vars
+.DS_Store
+
+# cloudflare / wrangler
+.wrangler/
+.wrangler/cache
+.dev.vars.*
+CLOUDFLARE_API_TOKEN
+
+# editor
+.vscode/
+.idea/
+*.log
+
+# os
+Thumbs.db

@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>评委打分 · 评标中心</title>
+  <link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%23d97757'/><stop offset='1' stop-color='%23c08328'/></linearGradient></defs><rect width='64' height='64' rx='16' fill='url(%23g)'/><path d='M32 14v36M20 50h24' stroke='%23fff' stroke-width='3' stroke-linecap='round' fill='none'/><path d='M14 24l8 14 8-14M34 24l8 14 8-14' stroke='%23fff' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round' fill='none'/><circle cx='32' cy='14' r='3' fill='%23fff'/></svg>">
+  <style>
+    :root {
+      --bg: #fdf6ee;
+      --panel: rgba(255, 251, 244, 0.92);
+      --line: rgba(120, 80, 40, 0.10);
+      --line-strong: rgba(120, 80, 40, 0.18);
+      --text: #3d2a1c;
+      --muted: #8a7460;
+      --gold: #c08328;
+      --cyan: #d97757;
+      --green: #6b9e4f;
+      --red: #c0492f;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { margin: 0; min-height: 100%; background: linear-gradient(180deg, #fdf6ee 0%, #f5e8d6 100%); color: var(--text); font-family: "PingFang SC", "Microsoft YaHei", sans-serif; }
+    body { padding: 16px; max-width: 680px; margin: 0 auto; padding-bottom: 60px; }
+    .head { padding: 18px 16px; border-radius: 20px; border: 1px solid var(--line); background: var(--panel); margin-bottom: 16px; display: flex; align-items: flex-start; gap: 12px; }
+    .head .head-main { flex: 1; min-width: 0; }
+    .head .sign-submit-btn { flex-shrink: 0; align-self: center; padding: 12px 18px; border-radius: 12px; border: 1px solid var(--gold); background: linear-gradient(135deg, var(--gold), var(--cyan)); color: #fff; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; white-space: nowrap; }
+    .head .sign-submit-btn:active { transform: scale(.98); }
+    .head .sign-submit-btn.disabled { background: var(--line-strong); border-color: var(--line-strong); color: var(--muted); cursor: not-allowed; }
+    .head .eyebrow { color: var(--gold); font-size: 11px; letter-spacing: .18em; text-transform: uppercase; margin-bottom: 8px; }
+    .head h1 { margin: 0; font-size: 20px; line-height: 1.3; }
+    .head .meta { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+    .head .tag { padding: 5px 10px; border-radius: 999px; border: 1px solid var(--line); background: rgba(255, 251, 244, .5); font-size: 12px; color: #6b4a2a; }
+    .head .judge { color: var(--cyan); font-size: 13px; margin-top: 8px; }
+
+    .vendor-list { display: grid; gap: 12px; }
+    .vendor-item { padding: 16px; border-radius: 18px; border: 1px solid var(--line); background: var(--panel); cursor: pointer; transition: all .15s; }
+    .vendor-item:active { transform: scale(.99); }
+    .vendor-item.locked { opacity: .5; cursor: not-allowed; }
+    .vendor-item.active { border-color: var(--gold); background: linear-gradient(135deg, rgba(192,131,40,.10), rgba(217,119,87,.06)); }
+    .vendor-item .vh { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+    .vendor-item .name { font-size: 16px; font-weight: 600; }
+    .vendor-item .slot { color: var(--muted); font-size: 12px; margin-top: 6px; }
+    .vendor-item .status { padding: 5px 10px; border-radius: 999px; font-size: 11px; border: 1px solid rgba(120,80,40,.12); }
+    .st-done { background: rgba(107,158,79,.12); color: var(--green); }
+    .st-doing { background: rgba(192,131,40,.14); color: var(--gold); }
+    .st-todo { background: rgba(217,119,87,.10); color: var(--cyan); }
+    .vendor-item .biz { color: var(--gold); font-size: 12px; margin-top: 8px; }
+    .vendor-item .mytotal { color: var(--muted); font-size: 12px; margin-top: 4px; }
+    .vendor-item .mytotal strong { color: var(--text); }
+
+    .back { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 10px; border: 1px solid var(--line-strong); background: rgba(255, 251, 244, .6); color: var(--text); font-size: 13px; cursor: pointer; margin-bottom: 14px; }
+
+    .dim-card { padding: 16px; border-radius: 18px; border: 1px solid var(--line); background: var(--panel); margin-bottom: 12px; }
+    .dim-card .top { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .dim-card .top strong { font-size: 15px; }
+    .dim-card .max { color: var(--muted); font-size: 12px; }
+    .dim-card .ai { padding: 10px; border-radius: 10px; background: rgba(217,119,87,.08); border: 1px solid rgba(217,119,87,.25); margin-bottom: 10px; font-size: 12px; color: var(--cyan); }
+    .dim-card .ai .ai-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .dim-card .ai .adopt { color: var(--gold); cursor: pointer; text-decoration: underline; flex-shrink: 0; }
+    .dim-card .ai .ai-ev { display: block; margin-top: 6px; color: var(--muted); line-height: 1.5; word-break: break-word; }
+    .dim-card .ai .ai-ev.collapsed { display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .dim-card .ai .ai-toggle { display: inline-block; margin-top: 4px; color: var(--gold); cursor: pointer; text-decoration: underline; font-size: 12px; }
+    .score-row { display: flex; align-items: center; gap: 10px; }
+    .score-input { width: 90px; padding: 12px; border-radius: 12px; border: 1px solid var(--line-strong); background: rgba(255, 251, 244, .8); color: var(--text); font-size: 22px; font-weight: 700; text-align: center; font-family: inherit; }
+    .score-input:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 3px rgba(192,131,40,.15); }
+    .quick { display: flex; gap: 6px; flex-wrap: wrap; }
+    .quick button { padding: 8px 14px; border-radius: 10px; border: 1px solid var(--line); background: rgba(255, 251, 244, .5); color: var(--text); font-size: 13px; cursor: pointer; font-family: inherit; }
+    .quick button:active { background: rgba(192,131,40,.15); }
+    .dim-card .bar { height: 7px; border-radius: 999px; background: rgba(120,80,40,.10); overflow: hidden; margin-top: 10px; }
+    .dim-card .bar i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #d97757, #c08328); transition: width .3s; }
+    .dim-card .desc { color: var(--muted); font-size: 12px; margin: 8px 0 0; }
+    .dim-card .details { margin: 10px 0 0; padding-left: 18px; color: var(--muted); font-size: 12px; line-height: 1.7; }
+    .dim-card .details li { margin-bottom: 3px; }
+    .dim-card .standard { margin-top: 8px; padding: 8px 10px; border-radius: 8px; background: rgba(192,131,40,.08); border: 1px solid rgba(192,131,40,.22); color: var(--gold); font-size: 11px; line-height: 1.5; }
+
+    .summary { padding: 16px; border-radius: 18px; border: 1px solid var(--gold); background: linear-gradient(135deg, rgba(192,131,40,.10), rgba(217,119,87,.06)); margin-top: 16px; text-align: center; }
+    .summary small { display: block; color: var(--muted); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; margin-bottom: 6px; }
+    .summary strong { font-size: 30px; color: var(--gold); }
+
+    .save-bar { display: flex; align-items: center; gap: 12px; justify-content: center; margin-top: 14px; padding: 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--panel); }
+    .save-bar .save-btn { padding: 12px 32px; border-radius: 12px; border: 1px solid var(--gold); background: linear-gradient(135deg, rgba(192,131,40,.18), rgba(217,119,87,.12)); color: var(--gold); font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; }
+    .save-bar .save-btn:active { transform: scale(.98); }
+    .save-bar .save-hint { color: var(--muted); font-size: 12px; }
+
+    .dim-comment { width: 100%; margin-top: 8px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line); background: rgba(255,251,244,.6); color: var(--text); font-size: 12px; font-family: inherit; resize: vertical; min-height: 44px; }
+    .dim-comment:focus { outline: none; border-color: var(--gold); }
+    .dim-comment.required { border-color: var(--red); background: rgba(192,73,47,.05); }
+    .dim-comment-hint { color: var(--red); font-size: 11px; margin-top: 4px; display: none; }
+    .dim-comment.required + .dim-comment-hint { display: block; }
+
+    .vendor-comment .overall { width: 100%; padding: 10px; border-radius: 10px; border: 1px solid var(--line-strong); background: rgba(255,251,244,.85); color: var(--text); font-size: 13px; font-family: inherit; resize: vertical; min-height: 80px; }
+    .vendor-comment .required .overall { border-color: var(--red); background: rgba(192,73,47,.05); }
+
+    /* 签名区 */
+    .sign-section { margin-top: 16px; padding: 16px; border-radius: 18px; border: 1px solid var(--gold); background: linear-gradient(135deg, rgba(192,131,40,.10), rgba(217,119,87,.06)); }
+    .sign-section h3 { margin: 0 0 10px; font-size: 15px; color: var(--gold); }
+    .sign-section .overall { width: 100%; margin-bottom: 12px; padding: 10px; border-radius: 10px; border: 1px solid var(--line-strong); background: rgba(255,251,244,.85); color: var(--text); font-size: 13px; font-family: inherit; resize: vertical; min-height: 80px; }
+    .sign-section .overall:focus { outline: none; border-color: var(--gold); }
+    .sig-pad-wrap { background: #fff; border: 2px dashed var(--line-strong); border-radius: 12px; padding: 8px; position: relative; }
+    .sig-pad { display: block; width: 100%; height: 160px; touch-action: none; cursor: crosshair; }
+    .sig-clear { margin-top: 6px; padding: 4px 12px; border-radius: 8px; border: 1px solid var(--line); background: rgba(255,251,244,.7); color: var(--muted); font-size: 12px; cursor: pointer; font-family: inherit; }
+    .sign-btn { display: block; width: 100%; margin-top: 12px; padding: 14px; border-radius: 12px; border: 1px solid var(--gold); background: linear-gradient(135deg, var(--gold), var(--cyan)); color: #fff; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; }
+    .sign-btn:active { transform: scale(.98); }
+
+    /* 手机全屏签名页 */
+    .msign-page { display: flex; flex-direction: column; min-height: 100vh; min-height: 100dvh; padding: 12px; box-sizing: border-box; }
+    .msign-page.msign-land { flex-direction: row; align-items: stretch; gap: 12px; }
+    .msign-page.msign-land .msign-head { flex-shrink: 0; display: flex; flex-direction: column; justify-content: center; min-width: 140px; }
+    .msign-page.msign-land .msign-pad-wrap { flex: 1; min-height: 0; }
+    .msign-page.msign-land .msign-go { width: auto; padding: 14px 30px; align-self: center; flex-shrink: 0; }
+    .msign-head { text-align: center; margin-bottom: 10px; }
+    .msign-eyebrow { color: var(--gold); font-size: 11px; letter-spacing: .18em; text-transform: uppercase; margin-bottom: 6px; }
+    .msign-title { font-size: 17px; font-weight: 700; }
+    .msign-judge { color: var(--cyan); font-size: 13px; margin-top: 4px; }
+    .msign-pad-wrap { flex: 1; position: relative; background: #fff; border: 2px dashed var(--line-strong); border-radius: 14px; padding: 8px; min-height: 320px; display: flex; }
+    .msign-pad { display: block; width: 100%; flex: 1; touch-action: none; cursor: crosshair; }
+    .msign-baseline { position: absolute; left: 12%; right: 12%; bottom: 30%; height: 0; border-bottom: 1px dashed rgba(120,80,40,.25); pointer-events: none; }
+    .msign-clear { position: absolute; top: 8px; right: 8px; padding: 6px 14px; border-radius: 8px; border: 1px solid var(--line); background: rgba(255,251,244,.85); color: var(--muted); font-size: 12px; cursor: pointer; font-family: inherit; }
+    .msign-go { width: 100%; margin-top: 14px; padding: 16px; border-radius: 14px; border: 1px solid var(--gold); background: linear-gradient(135deg, var(--gold), var(--cyan)); color: #fff; font-size: 16px; font-weight: 700; cursor: pointer; font-family: inherit; flex-shrink: 0; }
+    .msign-go:active { transform: scale(.98); }
+    .sign-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* 供应商列表完成状态 */
+    .vendor-item { position: relative; }
+    .vendor-item.all-done { border-color: rgba(107,158,79,.35); background: rgba(107,158,79,.04); }
+    .vendor-item.has-missing { border-color: rgba(192,73,47,.25); }
+    .complete-badge { display: inline-block; margin-top: 8px; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+    .complete-badge.done { background: rgba(107,158,79,.12); color: var(--green); }
+    .complete-badge.incomplete { background: rgba(192,73,47,.10); color: var(--red); }
+
+    .locked-card { margin-top: 16px; padding: 16px; border-radius: 18px; border: 1px solid var(--green); background: rgba(107,158,79,.08); text-align: center; }
+    .locked-card img { max-width: 240px; max-height: 80px; margin: 10px auto; display: block; border: 1px solid var(--line); border-radius: 8px; background: #fff; padding: 4px; }
+    .locked-card .lk-time { color: var(--muted); font-size: 12px; margin-top: 6px; }
+    .locked-card .lk-overall { margin-top: 10px; padding: 10px; border-radius: 10px; background: rgba(255,251,244,.7); border: 1px solid var(--line); font-size: 13px; text-align: left; color: var(--text); line-height: 1.6; }
+
+    /* 已锁定后的打分检查列表 */
+    .lk-scores { margin-top: 16px; padding: 16px; border-radius: 18px; border: 1px solid var(--line); background: var(--panel); }
+    .lk-scores h3 { margin: 0 0 12px; font-size: 15px; color: var(--gold); }
+    .lk-vendor { padding: 12px; border-radius: 12px; border: 1px solid var(--line); background: rgba(255,251,244,.5); margin-bottom: 10px; }
+    .lk-vname { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+    .lk-vtotal { font-size: 12px; font-weight: 600; color: var(--gold); }
+    .lk-dims { display: grid; gap: 6px; }
+    .lk-dim { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text); padding: 4px 0; border-top: 1px dashed var(--line); }
+    .lk-dim:first-child { border-top: none; }
+    .lk-dim span { flex: 1; color: var(--muted); }
+    .lk-dim strong { font-size: 16px; color: var(--gold); }
+    .lk-dim small { color: var(--muted); font-size: 11px; }
+
+    /* 完成签名弹层 */
+    .auto-sign-modal { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 16px; background: rgba(80,50,20,.5); }
+    .auto-sign-modal[hidden] { display: none !important; }
+    .auto-sign-box { width: 100%; max-width: 760px; background: linear-gradient(180deg, #fffbf4, #faf0e2); border: 1px solid var(--gold); border-radius: 22px; padding: 24px; }
+    .auto-sign-box h3 { margin: 0 0 10px; font-size: 18px; color: var(--gold); }
+    .auto-sign-box p { margin: 0 0 14px; color: var(--text); font-size: 14px; line-height: 1.7; }
+    .sign-cols { display: flex; flex-direction: column; gap: 14px; }
+    .sign-choice { padding: 12px; border: 1px solid var(--line); border-radius: 14px; }
+    .sc-title { font-weight: 700; font-size: 13px; margin-bottom: 8px; color: var(--gold); }
+    .qr-wrap { display: flex; justify-content: center; padding: 6px; background:#fff; border-radius: 10px; margin-bottom: 6px; }
+    .qr-wrap canvas, .qr-wrap img { width: 140px !important; height: 140px !important; }
+    .sc-hint { color: var(--muted); font-size: 11px; line-height: 1.5; }
+    .sc-link { display:block; margin-top: 6px; width:100%; padding:6px; border:1px solid var(--line-strong); background:rgba(255,251,244,.7); border-radius:8px; color:var(--text); font-size:11px; cursor:pointer; font-family:inherit; }
+    .sign-choice .sig-pad-wrap { padding: 6px; }
+    .sign-choice .sig-pad { height: 320px !important; width: 100% !important; }
+    .sign-choice .sig-actions { margin-top: 4px; }
+    .sc-divider { text-align:center; color:var(--muted); font-size:12px; margin: 8px 0; }
+    .auto-sign-box .sig-pad-wrap { background:#fff; border:2px dashed var(--line-strong); border-radius:12px; padding:8px; margin: 14px 0 10px; }
+    .auto-sign-box .sig-pad { display: block; width: 100%; height: 180px; touch-action: none; cursor: crosshair; }
+    .auto-sign-box .sig-actions { display:flex; justify-content:flex-end; }
+    .auto-sign-box .sig-actions button { padding: 5px 12px; border-radius: 8px; border: 1px solid var(--line); background: rgba(255,251,244,.7); color: var(--muted); font-size: 12px; cursor: pointer; font-family: inherit; }
+    .auto-sign-box .btn-group { display: flex; gap: 10px; justify-content: center; margin-top: 14px; }
+    .auto-sign-box button { flex: 1; padding: 12px 14px; border-radius: 12px; font-size: 15px; font-weight: 700; font-family: inherit; cursor: pointer; border: 1px solid; }
+    .auto-sign-box .btn-primary { background: linear-gradient(135deg, var(--gold), var(--cyan)); border-color: var(--gold); color: #fff; }
+    .auto-sign-box .btn-primary:disabled { opacity:.5; cursor:not-allowed; }
+    .auto-sign-box .btn-default { background: rgba(255,251,244,.7); border-color: var(--line-strong); color: var(--text); }
+
+    .offline-bar { position: fixed; top: 0; left: 0; right: 0; z-index: 80; padding: 8px 14px; background: var(--red); color: #fff; font-size: 12px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,.15); }
+    .offline-bar[hidden] { display: none; }
+
+    .empty { padding: 40px; text-align: center; color: var(--muted); border: 1px dashed var(--line); border-radius: 18px; }
+    .saved { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); padding: 8px 16px; border-radius: 999px; background: rgba(107,158,79,.18); color: var(--green); font-size: 12px; border: 1px solid rgba(107,158,79,.35); opacity: 0; transition: opacity .3s; }
+    .saved.show { opacity: 1; }
+
+    /* 常驻顶部返回条 */
+    .topbar { position: sticky; top: 0; z-index: 20; display: none; align-items: center; gap: 10px; padding: 10px 12px; margin: -16px -16px 14px; background: rgba(253,246,238,.92); backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); }
+    .topbar.show { display: flex; }
+    .topbar .back { margin: 0; }
+    .topbar .title { font-size: 14px; font-weight: 600; flex: 1; }
+    .topbar .help { padding: 6px 12px; border-radius: 10px; border: 1px solid var(--line-strong); background: rgba(255,251,244,.6); color: var(--text); font-size: 12px; cursor: pointer; font-family: inherit; }
+
+    .help-bar { display: flex; justify-content: flex-end; margin-bottom: 12px; }
+    .help-bar button { padding: 6px 12px; border-radius: 10px; border: 1px solid var(--line-strong); background: rgba(255,251,244,.6); color: var(--text); font-size: 12px; cursor: pointer; font-family: inherit; }
+
+    /* 说明弹层 */
+    .modal { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 16px; background: rgba(80,50,20,.45); }
+    .modal[hidden] { display: none !important; }
+    .modal-box { width: 100%; max-width: 480px; max-height: 85vh; overflow-y: auto; background: linear-gradient(180deg, #fffbf4, #faf0e2); border: 1px solid var(--line-strong); border-radius: 18px; padding: 18px; }
+    .modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; position: sticky; top: -18px; padding-top: 4px; background: linear-gradient(180deg, #fffbf4 80%, rgba(255,251,244,0)); z-index: 2; }
+    .modal-head h3 { margin: 0; font-size: 15px; }
+    .modal-body { color: var(--text); line-height: 1.8; font-size: 14px; }
+    .modal-body p { margin: 0 0 10px; }
+    .xbtn { padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: var(--muted); cursor: pointer; font-family: inherit; }
+
+    .sign-cols { display: grid; grid-template-columns: 220px 1fr; gap: 14px; align-items: stretch; }
+    .sign-choice { padding: 12px; border: 1px solid var(--line); border-radius: 14px; margin-bottom: 0; }
+    .sc-title { font-weight: 700; font-size: 13px; margin-bottom: 8px; color: var(--gold); }
+    .qr-wrap { display: flex; justify-content: center; padding: 6px; background:#fff; border-radius: 10px; margin-bottom: 6px; }
+    .qr-wrap canvas, .qr-wrap img { width: 180px !important; height: 180px !important; }
+    .sc-hint { color: var(--muted); font-size: 11px; line-height: 1.5; }
+    .sc-link { display:block; margin-top: 6px; width:100%; padding:6px; border:1px solid var(--line-strong); background:rgba(255,251,244,.7); border-radius:8px; color:var(--text); font-size:11px; cursor:pointer; font-family:inherit; }
+    .sign-choice .sig-pad-wrap { padding: 6px; height: 100%; }
+    .sign-choice .sig-pad { height: 320px !important; width: 100% !important; }
+    .sign-choice .sig-actions { margin-top: 4px; text-align: left; }
+    .sc-divider { text-align:center; color:var(--muted); font-size:12px; margin: 10px 0; }
+  </style>
+</head>
+<body>
+  <div class="offline-bar" id="offlineBar" hidden>离线</div>
+  <div class="topbar" id="topbar">
+    <button class="back" id="topbarBack">← 返回列表</button>
+    <div class="title" id="topbarTitle"></div>
+    <button class="help" id="topbarHelp">说明</button>
+  </div>
+  <div id="app"></div>
+  <div class="saved" id="saved">已保存</div>
+
+  <div class="auto-sign-modal" id="autoSignModal" hidden>
+    <div class="auto-sign-box">
+      <h3>签名并提交</h3>
+      <p>选择签名方式。签名后一次性提交所有打分及总评并锁定。</p>
+      <div class="sign-cols">
+        <div class="sign-choice">
+          <div class="sc-title">手机扫码签名</div>
+          <div class="qr-wrap" id="qrBox"></div>
+          <div class="sc-hint">扫码后在手机上手写签名，签名会自动同步到右边框里，再点下方按钮提交。</div>
+          <button class="sc-link" id="copyMobileLink">复制手机签名链接</button>
+        </div>
+        <div class="sign-choice">
+          <div class="sc-title">本机手写签名</div>
+          <div class="sig-pad-wrap"><canvas class="sig-pad" id="modalSigPad"></canvas></div>
+          <div class="sig-actions"><button id="modalSigClear">清除签名</button></div>
+        </div>
+      </div>
+      <div class="btn-group">
+        <button class="btn-primary" id="autoSignGo">本机签名并提交</button>
+        <button class="btn-default" id="autoSignBack">返回修改</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="helpModal" hidden>
+    <div class="modal-box">
+      <div class="modal-head">
+        <h3>怎么打分 · 评委</h3>
+        <button class="xbtn" id="helpClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <p><strong>1. 选供应商</strong><br>列表里按讲标顺序排好。第一家到了开始时间会自动开放；之后每讲完一家管理员会推进到下一家，开放后你就能点进去打分。未轮到的供应商会锁住，点不动。</p>
+        <p><strong>2. 逐项打分</strong><br>每家有几个评分维度，每个维度一个输入框。直接打分，或者点下面的快捷按钮（0、一半、满分）。打分过程只保存在本机，不会实时同步。</p>
+        <p><strong>3. 看 AI 建议</strong><br>有的维度下面有「AI 建议」和「采纳」按钮，可以参考，也可以直接点采纳填进去。</p>
+        <p><strong>4. 写分项说明</strong><br>每个维度下面有个「分项说明」框，选填。但如果某维度打了异常分（低于满分 60%），框会变红，必须填写扣分依据。</p>
+        <p><strong>5. 打完一家换下一家</strong><br>顶部一直有「← 返回列表」按钮，随时点返回，再选下一家。</p>
+        <p><strong>6. 供应商总评 + 手写签名</strong><br>每家供应商打分页底部都有「本供应商总评」框，必填。管理员把所有供应商都开放后，且所有维度打分及每家总评都填完后，列表页右上角的「签名并提交」按钮变亮可点；没填完时按钮灰色禁用。点按钮可选择扫二维码用手机签名，或直接在本机手写。签名后一次性把所有打分/分项说明/总评提交到云端并锁定。签名后不能再改，如需修改联系管理员解锁。不签名则无法提交打分。</p>
+        <p><strong>7. 自动保存</strong><br>分数、评语、总评都会自动保存在本机浏览器。只要不清除本地数据，刷新不会丢失。最终只有签名并提交后才会上传到云端。</p>
+        <p style="color:var(--muted);font-size:12px;">商务分（播放量）由管理员填，不用你管。</p>
+      </div>
+    </div>
+  </div>
+  <script src="./qrcode.min.js"></script>
+  <script src="./judge.js"></script>
+</body>
+</html>

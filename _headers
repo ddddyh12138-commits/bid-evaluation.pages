@@ -1,0 +1,27 @@
+/*
+  Cache-Control: no-cache
+
+/index.html
+  Cache-Control: no-cache
+
+/app.js
+  Cache-Control: no-cache
+
+/judge.html
+  Cache-Control: no-cache
+
+/judge.js
+  Cache-Control: no-cache
+
+/xlsx.full.min.js
+  Cache-Control: public, max-age=31536000, immutable
+
+/tailwind.css
+  Cache-Control: public, max-age=3600
+
+/api/*
+  Content-Type: application/json
+  Cache-Control: no-store
+  Access-Control-Allow-Origin: *
+  Access-Control-Allow-Methods: GET, POST, DELETE, OPTIONS, HEAD
+  Access-Control-Allow-Headers: Content-Type, X-Room-Key
