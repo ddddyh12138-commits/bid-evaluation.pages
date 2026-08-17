@@ -69,7 +69,10 @@ function defaultState() {
     aiSuggestions: {},
     minutes: {},
     aiConfig: { baseUrl: '', model: '', key: '' },
+    // 按天隔离的当前开放供应商：{ '2026-08-14': 'v123' }
+    // 新一天的会议不会沿用旧推进进度，第一家按开始时间自动开放
     currentVendorId: null,
+    currentVendorByDate: {},
     tenderReqs: '',
     qualInputs: {},
     qualResults: {},
@@ -992,6 +995,35 @@ function isAllMeetingsEnded() {
   return state.vendors.every(v => vendorStatus(v) === 'done');
 }
 
+// 项目是否已过期锁定：今天已晚于所有会议日期（过了会议日期当天就不能再操作）
+// 任意一个供应商的会议日期 >= 今天，就还没过期
+function isProjectLocked() {
+  const today = todayStr();
+  const dates = state.vendors.map(v => v.meetingDate).filter(Boolean);
+  if (!dates.length) return false;
+  return dates.every(d => d < today);
+}
+// 当天日期字符串，本地时区 YYYY-MM-DD
+function todayStr() {
+  const d = new Date();
+  const p = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`;
+}
+// 取当前开放供应商 id（按天隔离）：优先用当天的，回退到旧的 currentVendorId（兼容旧数据）
+function getCurrentVendorId() {
+  const byDate = state.currentVendorByDate || {};
+  const today = todayStr();
+  if (byDate[today]) return byDate[today];
+  return state.currentVendorId || null;
+}
+// 设置当前开放供应商（按当天写入）
+function setCurrentVendorId(vid) {
+  const today = todayStr();
+  state.currentVendorByDate = state.currentVendorByDate || {};
+  state.currentVendorByDate[today] = vid;
+  state.currentVendorId = vid; // 兼容旧逻辑/旧端读取
+}
+
 function computePhase() {
   const sorted = sortedVendors().filter(v => v.meetingDate && v.endTime);
   if (!sorted.length) return { phase: '准备中', deadline: '', explain: '请先在项目设置里填会议时间' };
@@ -1428,15 +1460,22 @@ function viewDashboard() {
         <div class="panel-head">
           <div>
             <h3>讲标时间线</h3>
-            <p>第一家到开始时间自动开放，之后由管理员手动推进</p>
+            <p>每家到开始时间自动开放；同一天内可手动推进下一家，新一天按开始时间自动开放第一家</p>
           </div>
           ${(() => {
             const sorted = sortedVendors();
             if (!sorted.length) return '';
+            const locked = isProjectLocked();
+            if (locked) {
+              return `<div class="progress-actions" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                <span class="status-pill status-done">会议已结束，项目已锁定（只读）</span>
+              </div>`;
+            }
             const first = sorted[0];
             const firstStarted = first && first.meetingDate && first.startTime && new Date() >= new Date(`${first.meetingDate}T${first.startTime}:00+08:00`);
-            const curIdx = sorted.findIndex(v => v.id === state.currentVendorId);
-            const idx = state.currentVendorId ? curIdx : (firstStarted ? 0 : -1);
+            const curId = getCurrentVendorId();
+            const curIdx = sorted.findIndex(v => v.id === curId);
+            const idx = curId ? curIdx : (firstStarted ? 0 : -1);
             const current = idx >= 0 ? sorted[idx] : null;
             const next = idx >= 0 && idx < sorted.length - 1 ? sorted[idx + 1] : null;
             return `
@@ -1444,7 +1483,6 @@ function viewDashboard() {
               ${!firstStarted ? `<span class="status-pill status-todo">第一家将于 ${escapeHtml(first.startTime || '--')} 自动开放</span>` : ''}
               ${current ? `<span class="status-pill status-doing">当前开放：${escapeHtml(current.name)}</span>` : ''}
               ${next ? `<button class="btn btn-primary" data-action="advance-vendor">结束当前，开始下一家：${escapeHtml(next.name)}</button>` : (firstStarted ? '<span class="status-pill status-done">已全部开放</span>' : '')}
-              ${state.currentVendorId ? `<button class="btn" data-action="reset-vendor-progress">重新开放第一家</button>` : ''}
             </div>`;
           })()}
         </div>
@@ -1613,7 +1651,7 @@ function viewSettings() {
         <button class="btn btn-primary" data-action="add-vendor">+ 添加供应商</button>
       </div>
       ${state.vendors.map(v => {
-        const isCurrent = v.id === state.currentVendorId;
+        const isCurrent = v.id === getCurrentVendorId();
         return `
         <div class="form-row" data-vid="${v.id}" style="grid-template-columns:1fr auto auto auto;">
           <input class="input" data-action="set-vendor-name" data-vid="${v.id}" value="${escapeAttr(v.name)}" placeholder="供应商名称">
@@ -1785,7 +1823,7 @@ function bindViewEvents() {
   // 通用 action（view 内）
   viewEl.querySelectorAll('[data-action]').forEach(el => {
     const a = el.dataset.action;
-    if (['add-vendor','del-vendor','add-dim','del-dim','add-judge','del-judge','pick-vendor','pick-judge','parse-paste-modal','auto-end-modal','open-meeting','close-meeting','save-meeting','gen-vendor-ai','clear-vendor-ai','gen-report','gen-cross-analysis','download-report','archive-project','open-archive','del-archive','clone-from-archive','adopt-from-similar','filter-history','set-supplier-note','toggle-blacklist','copy-link','unlock-judge','advance-vendor','set-current-vendor','reset-vendor-progress','view-archive-cross'].includes(a)) {
+    if (['add-vendor','del-vendor','add-dim','del-dim','add-judge','del-judge','pick-vendor','pick-judge','parse-paste-modal','auto-end-modal','open-meeting','close-meeting','save-meeting','gen-vendor-ai','clear-vendor-ai','gen-report','gen-cross-analysis','download-report','archive-project','open-archive','del-archive','clone-from-archive','adopt-from-similar','filter-history','set-supplier-note','toggle-blacklist','copy-link','unlock-judge','advance-vendor','set-current-vendor','view-archive-cross'].includes(a)) {
       el.addEventListener('click', handleAction);
     }
   });
@@ -1840,29 +1878,27 @@ async function handleAction(e) {
       persistLocal();
       renderAll(); break;
     case 'advance-vendor': {
+      if (isProjectLocked()) { alert('会议已结束，项目已锁定，无法推进'); break; }
       const sorted = sortedVendors();
-      const curIdx = sorted.findIndex(v => v.id === state.currentVendorId);
+      const curId = getCurrentVendorId();
+      const curIdx = sorted.findIndex(v => v.id === curId);
       const next = sorted[curIdx + 1];
       if (next) {
-        state.currentVendorId = next.id;
+        setCurrentVendorId(next.id);
+        persistLocal();
         saveStateCloud();
-        saveStateAndRender();
+        // 即时反馈：按钮已点击立即改文案，避免等待推云回写
+        el.disabled = true; el.textContent = '已推进，同步中…';
+        setTimeout(saveStateAndRender, 200);
       }
       break;
     }
     case 'set-current-vendor': {
-      state.currentVendorId = el.dataset.vid;
+      if (isProjectLocked()) { alert('会议已结束，项目已锁定，无法更改开放供应商'); break; }
+      setCurrentVendorId(el.dataset.vid);
+      persistLocal();
       saveStateCloud();
       saveStateAndRender();
-      break;
-    }
-    case 'reset-vendor-progress': {
-      const sorted = sortedVendors();
-      if (sorted[0]) {
-        state.currentVendorId = sorted[0].id;
-        saveStateCloud();
-        saveStateAndRender();
-      }
       break;
     }
     case 'parse-paste-modal': {
@@ -2042,6 +2078,7 @@ async function handleAction(e) {
         state.vendorMaterials = {};
         state.crossVendorAnalysis = '';
         state.currentVendorId = null;
+        state.currentVendorByDate = {};
         scores = {};
         lastReportDoc = null;
         lastReportMd = '';

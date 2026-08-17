@@ -790,16 +790,32 @@ function sortedVendorList() {
 }
 function getCurrentVendorIndex() {
   const sorted = sortedVendorList();
-  // currentVendorId 已设置则用它；否则若第一家已开始，自动视为已激活
-  if (state.currentVendorId) {
-    return sorted.findIndex(v => v.id === state.currentVendorId);
-  }
   if (!sorted.length) return -1;
+  // 项目已过期锁定：今天晚于所有会议日期，全部锁住（只读）
+  if (isProjectLocked()) return -1;
+  // 按天隔离的当前开放：优先当天写入的，回退到旧的 currentVendorId
+  const today = todayStr();
+  const byDate = state.currentVendorByDate || {};
+  const curId = byDate[today] || state.currentVendorId || null;
+  if (curId) {
+    return sorted.findIndex(v => v.id === curId);
+  }
   const first = sorted[0];
   if (!first.meetingDate || !first.startTime) return -1;
   const start = new Date(`${first.meetingDate}T${first.startTime}:00+08:00`);
   if (isNaN(start) || new Date() < start) return -1;
   return 0;
+}
+function todayStr() {
+  const d = new Date();
+  const p = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`;
+}
+function isProjectLocked() {
+  const today = todayStr();
+  const dates = state.vendors.map(v => v.meetingDate).filter(Boolean);
+  if (!dates.length) return false;
+  return dates.every(d => d < today);
 }
 function isLocked(v) {
   const idx = getCurrentVendorIndex();
@@ -816,6 +832,7 @@ function effectiveStatus(v) {
   return 'todo';
 }
 function lockReason(v) {
+  if (isProjectLocked()) return '会议已结束，项目已锁定';
   if (getCurrentVendorIndex() === -1) return '管理员未开始讲标';
   return '尚未开放评分';
 }
