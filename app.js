@@ -632,19 +632,18 @@ function buildSignSectionMd() {
       if (m.signature) lines.push(`[SIG:${j.id}]`);
       lines.push(`签名时间：${t}`);
       lines.push('');
-      // 每家供应商各一级维度评分表
+      // 每家供应商各一级维度评分表（标准 markdown 表格，首尾带 |）
       if (state.vendors && state.vendors.length) {
-        const header = ['供应商', ...state.dimensions.map(d => d.name), '技术合计'].join(' | ');
-        const sep = ['---', ...state.dimensions.map(() => '---'), '---'].join(' | ');
-        lines.push(header);
-        lines.push(sep);
+        const header = ['供应商', ...state.dimensions.map(d => d.name), '技术合计'];
+        lines.push('| ' + header.join(' | ') + ' |');
+        lines.push('| ' + header.map(() => '---').join(' | ') + ' |');
         for (const v of state.vendors) {
           const vals = state.dimensions.map(d => {
             const s = getScore(v.id, j.id, d.id);
             return (s === undefined || s === null || s === '') ? '—' : Number(s).toFixed(1);
           });
           const total = judgeTotalForVendor(v.id, j.id).toFixed(1);
-          lines.push([v.name, ...vals, total].join(' | '));
+          lines.push('| ' + [v.name, ...vals, total].join(' | ') + ' |');
         }
         lines.push('');
       }
