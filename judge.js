@@ -485,11 +485,8 @@ function bindScoring() {
 
 function isAllScoringComplete() {
   if (!state || !state.vendors || !state.vendors.length || !state.dimensions.length) return false;
-  // 必须全部供应商都已开放（currentVendorId 是最后一家）
-  const sorted = sortedVendorList();
-  const curIdx = getCurrentVendorIndex();
-  if (curIdx !== sorted.length - 1) return false;
-  // 所有供应商的所有维度都打了分 + 总评都填了
+  // 所有供应商的所有维度都打了分 + 总评都填了（不再强制要求开放到最后一家，
+  // 兼容会议日期已过/管理员未推进到底但评委实际已评完的情况）
   for (const v of state.vendors) {
     for (const d of state.dimensions) {
       if (myScore(v.id, d.id) == null) return false;

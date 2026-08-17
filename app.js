@@ -1147,6 +1147,11 @@ function vendorStatus(v) {
   if (now > end) return 'done';
   return 'doing';
 }
+// 所有评委是否都已签名锁定
+function allJudgesSigned() {
+  if (!state.judges || !state.judges.length) return false;
+  return state.judges.every(j => judgeMeta[j.id]?.locked);
+}
 function isAllMeetingsEnded() {
   if (!state.vendors.length) return false;
   return state.vendors.every(v => vendorStatus(v) === 'done');
@@ -1589,7 +1594,7 @@ function viewDashboard() {
     <section class="panel">
       <div class="panel-head"><div><h3>智能分析</h3><p>异常报价自动检测 + 评标报告自动生成 Word + 供应商横评</p></div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          <button class="btn btn-primary" data-action="gen-report" ${reportGenerating ? 'disabled' : ''}>${reportGenerating ? '报告生成中…' : '生成评标报告'}</button>
+          <button class="btn btn-primary" data-action="gen-report" ${(reportGenerating || !allJudgesSigned()) ? 'disabled' : ''}>${reportGenerating ? '报告生成中…' : (allJudgesSigned() ? '生成评标报告' : '评分未收集完')}</button>
           <button class="btn" data-action="download-report" data-report-dl ${(lastReportDoc && !reportGenerating) ? '' : 'hidden'}>下载 Word</button>
         </div>
       </div>
@@ -2193,6 +2198,7 @@ async function handleAction(e) {
     }
     case 'gen-report': {
       if (reportGenerating) break;
+      if (!allJudgesSigned()) { alert('还有评委未签名确认，评分尚未收集完成，暂不能生成报告'); break; }
       reportGenerating = true;
       setReportButtonLoading();
       try {
@@ -2741,6 +2747,7 @@ function startSilentReportWatcher() {
   silentReportTimer = setInterval(() => {
     if (!state.aiConfig?.key) return;
     if (!isAllMeetingsEnded()) return;
+    if (!allJudgesSigned()) return; // 评分未收集完（还有评委没签名）不自动生成
     if (lastReportDoc) { // 已有报告：停止 watcher，避免空跑
       if (silentReportTimer) { clearInterval(silentReportTimer); silentReportTimer = null; }
       return;
