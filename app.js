@@ -2164,28 +2164,28 @@ async function handleAction(e) {
   switch (a) {
     case 'add-vendor':
       state.vendors.push({ id: 'v'+uid(), name: '', order: state.vendors.length, meetingDate: '', startTime: '', endTime: '', meetingLink: '', meetingId: '', meetingPwd: '', playCount: 0, status: 'todo' });
-      saveStateAndRender(); break;
+      saveStateAndRender(); syncToCloud(); break;
     case 'del-vendor': {
       const id = el.dataset.vid;
       state.vendors = state.vendors.filter(v => v.id !== id);
       // 先清云端 scores 再推 state，避免 state 先到后短暂残留孤儿 scores
       await apiPost('/admin', { action: 'clearScoresBy', vendorId: id });
-      saveStateAndRender(); break;
+      saveStateAndRender(); syncToCloud(); break;
     }
     case 'add-dim':
       state.dimensions.push({ id: 'd'+uid(), name: '', max: 10, desc: '' });
-      saveStateAndRender(); break;
+      saveStateAndRender(); syncToCloud(); break;
     case 'del-dim':
       state.dimensions = state.dimensions.filter(d => d.id !== el.dataset.did);
       await apiPost('/admin', { action: 'clearScoresBy', dimId: el.dataset.did });
-      saveStateAndRender(); break;
+      saveStateAndRender(); syncToCloud(); break;
     case 'add-judge':
       state.judges.push({ id: 'j'+uid(), name: '', token: uid() });
-      saveStateAndRender(); break;
+      saveStateAndRender(); syncToCloud(); break;
     case 'del-judge':
       state.judges = state.judges.filter(j => j.id !== el.dataset.jid);
       await apiPost('/admin', { action: 'clearScoresBy', judgeId: el.dataset.jid });
-      saveStateAndRender(); break;
+      saveStateAndRender(); syncToCloud(); break;
     case 'unlock-judge': {
       const jid = el.dataset.jid;
       const j = state.judges.find(x => x.id === jid);
