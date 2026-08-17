@@ -513,7 +513,7 @@ function showAutoSignModal() {
   const qrCol = modal.querySelector('.sign-choice');
   if (isMobileLike() && qrCol) qrCol.style.display = 'none';
   modal.hidden = false;
-  setTimeout(initModalSigPad, 0);
+  setTimeout(initModalSigPad, 50);
   // 桌面端才需要暂存分数 + 二维码 + 轮询拉签名
   if (!isMobileLike()) {
     stageScores();
