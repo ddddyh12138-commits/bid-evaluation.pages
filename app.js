@@ -412,16 +412,50 @@ async function aiChat(prompt, options = {}) {
   return data.choices?.[0]?.message?.content?.trim() || '';
 }
 
-// 从横评正文里抽「最推荐哪家 + 理由」用作折叠摘要
+// 从横评正文里抽取「综合结论·最推荐」整段，作为折叠区默认显示的摘要
 function extractCrossRecommendation(text) {
   if (!text) return '';
   const t = String(text).trim();
-  // 优先匹配「最推荐 XXX」/「推荐 XXX」句式，取到第一个句号/换行
-  const m = t.match(/(最推荐|综合推荐|推荐选择?|首选)[^。\n]{0,120}/);
-  if (m) return m[0].trim();
-  // 兜底：取第一段前 80 字
+  // 优先取「综合结论」段：从"综合结论"标记到下一个同级标题或第一个空行
+  const m = t.match(/综合结论[\s\S]*/);
+  let seg = m ? m[0] : '';
+  if (seg) {
+    // 截到下一个 ## 或 ### 标题（若有）
+    const nextHead = seg.search(/\n#{2,3}\s/);
+    if (nextHead > 0) seg = seg.slice(0, nextHead);
+    return seg.trim();
+  }
+  // 兜底：匹配「最推荐 XXX」句式，取到第一个句号/换行
+  const m2 = t.match(/(最推荐|综合推荐|推荐选择?|首选)[^。\n]{0,200}/);
+  if (m2) return m2[0].trim();
   const firstLine = t.split(/\n/).find(l => l.trim()) || t;
-  return firstLine.trim().slice(0, 80);
+  return firstLine.trim().slice(0, 120);
+}
+
+// 横评摘要格式化：保留 markdown 标题/加粗，转 HTML
+function formatCrossSummary(md) {
+  if (!md) return '';
+  let html = escapeHtml(md);
+  // markdown 加粗 **xxx**
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong style="color:var(--gold);">$1</strong>');
+  // markdown 标题 ### / ## → 加粗行
+  html = html.replace(/^#{2,3}\s+(.+)$/gm, '<strong style="color:var(--gold);font-size:13px;">$1</strong>');
+  // 换行
+  html = html.replace(/\n/g, '<br>');
+  return html;
+}
+
+// 完整横评格式化：保留 markdown 结构，转 HTML
+function formatCrossFull(md) {
+  if (!md) return '';
+  let html = escapeHtml(md);
+  html = html.replace(/^###\s+(.+)$/gm, '<h4 style="color:var(--gold);margin:10px 0 4px;">$1</h4>');
+  html = html.replace(/^##\s+(.+)$/gm, '<h3 style="color:var(--gold);margin:12px 0 6px;">$1</h3>');
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/\n/g, '<br>');
+  // 把标题前后的 <br> 去掉，避免空行过大
+  html = html.replace(/<br>(<h[34])/g, '$1').replace(/(<\/h[34]>)<br>/g, '$1');
+  return html;
 }
 
 // 供应商横评：一次性汇总所有已评供应商的横向对比
@@ -1619,8 +1653,8 @@ function viewDashboard() {
           </summary>
           <div style="margin-top:10px;">
           ${crossAnalysis
-            ? `<div style="color:var(--text);font-size:13px;margin-bottom:8px;line-height:1.6;"><strong style="color:var(--gold);">综合结论·最推荐：</strong>${escapeHtml(extractCrossRecommendation(crossAnalysis))}</div>
-               <div class="cross-vendor-content" style="display:none;">${escapeHtml(crossAnalysis).replace(/\n/g, '<br>')}</div>
+            ? `<div class="cross-vendor-summary" style="color:var(--text);font-size:13px;margin-bottom:8px;line-height:1.7;">${formatCrossSummary(extractCrossRecommendation(crossAnalysis))}</div>
+               <div class="cross-vendor-content" style="display:none;">${formatCrossFull(crossAnalysis)}</div>
                <button class="btn btn-ghost" data-action="toggle-cross-detail" style="font-size:12px;padding:4px 10px;">展开查看完整横评</button>`
             : `<div class="anomaly-ok">${hasAiEnough ? '点击右上角「生成供应商横评」按钮生成横向对比分析。' : '所有供应商都上传材料后，可一键生成横评（评分工作台右上角按钮）。'}</div>`}
           </div>
