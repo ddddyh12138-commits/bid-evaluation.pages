@@ -2162,7 +2162,7 @@ function bindViewEvents() {
   // 通用 action（view 内）
   viewEl.querySelectorAll('[data-action]').forEach(el => {
     const a = el.dataset.action;
-    if (['add-vendor','del-vendor','add-dim','del-dim','add-judge','del-judge','pick-vendor','pick-judge','parse-paste-modal','auto-end-modal','open-meeting','close-meeting','save-meeting','gen-vendor-ai','clear-vendor-ai','gen-report','gen-cross-analysis','download-report','archive-project','open-archive','del-archive','clone-from-archive','adopt-from-similar','filter-history','set-supplier-note','toggle-blacklist','copy-link','unlock-judge','advance-vendor','set-current-vendor','view-archive-cross','toggle-cross-detail','toggle-archive-cross','regen-archive-report','upload-archive-report'].includes(a)) {
+    if (['add-vendor','del-vendor','add-dim','del-dim','add-judge','del-judge','pick-vendor','pick-judge','parse-paste-modal','auto-end-modal','open-meeting','close-meeting','save-meeting','gen-vendor-ai','clear-vendor-ai','gen-report','gen-cross-analysis','download-report','archive-project','open-archive','del-archive','clone-from-archive','adopt-from-similar','filter-history','set-supplier-note','toggle-blacklist','copy-link','unlock-judge','advance-vendor','set-current-vendor','view-archive-cross','toggle-cross-detail','toggle-archive-cross','regen-archive-report'].includes(a)) {
       el.addEventListener('click', handleAction);
     }
   });
@@ -2581,29 +2581,6 @@ async function handleAction(e) {
       }
       break;
     }
-    case 'upload-archive-report': {
-      const arc = (state.archives || []).find(a => a.id === el.dataset.aid);
-      if (!arc) break;
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.accept = '.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-      input.onchange = () => {
-        const file = input.files && input.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = () => {
-          // dataURL 形式存到归档，下载时直接还原原文件
-          arc.reportFile = { name: file.name, dataUrl: reader.result, size: file.size };
-          persistLocal(); saveStateCloud();
-          renderAll();
-          alert('已上传：' + file.name);
-        };
-        reader.onerror = () => alert('读取文件失败');
-        reader.readAsDataURL(file);
-      };
-      input.click();
-      break;
-    }
     case 'regen-archive-report': {
       const arc = (state.archives || []).find(a => a.id === el.dataset.aid);
       if (!arc) break;
@@ -2956,15 +2933,15 @@ function openArchiveDetail(aid) {
       const hasFile = !!arc.reportFile;
       const hasMd = !!arc.reportMd;
       if (!hasFile && !hasMd) {
+        // 没有报告：只显示重新生成按钮
         return `<div style="margin-top:4px;color:var(--muted);font-size:13px;">该归档未保存报告。
-          <button class="btn btn-ghost" data-action="upload-archive-report" data-aid="${arc.id}" style="margin-left:8px;font-size:12px;">上传 Word 文件</button>
-          <button class="btn btn-ghost" data-action="regen-archive-report" data-aid="${arc.id}" style="margin-left:4px;font-size:12px;">重新生成</button></div>`;
+          <button class="btn btn-ghost" data-action="regen-archive-report" data-aid="${arc.id}" style="margin-left:8px;font-size:12px;">重新生成</button></div>`;
       }
+      // 有报告：只显示下载按钮（不显示重新生成）
       return `<div style="margin-top:4px;">
         ${hasMd ? `<details><summary>查看报告正文</summary><pre class="report-pre" style="max-height:40vh;margin-top:8px;">${escapeHtml(arc.reportMd)}</pre></details>` : ''}
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
           <button class="btn btn-primary" data-action="dl-archive-report" data-aid="${arc.id}">下载 Word 报告</button>
-          <button class="btn btn-ghost" data-action="upload-archive-report" data-aid="${arc.id}" style="font-size:12px;">替换上传文件</button>
         </div>
       </div>`;
     })()}
