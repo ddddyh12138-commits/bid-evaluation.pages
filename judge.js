@@ -668,7 +668,7 @@ function initMobileSigPad() {
   mobileSigCtx.lineWidth = 2;
   mobileSigCtx.lineCap = 'round';
   mobileSigCtx.lineJoin = 'round';
-  mobileSigCtx.strokeStyle = '#3d2a1c';
+  mobileSigCtx.strokeStyle = '#1f2329';
   mobileSigInk = false;
   let last = null;
   const pos = (e) => {
@@ -860,7 +860,7 @@ function initModalSigPad() {
   modalSigCtx.lineWidth = 2;
   modalSigCtx.lineCap = 'round';
   modalSigCtx.lineJoin = 'round';
-  modalSigCtx.strokeStyle = '#3d2a1c';
+  modalSigCtx.strokeStyle = '#1f2329';
   modalSigInk = false;
   const pos = (e) => {
     const r = canvas.getBoundingClientRect();

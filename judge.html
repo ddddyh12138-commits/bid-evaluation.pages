@@ -4,102 +4,104 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>评委打分 · 评标中心</title>
-  <link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%23d97757'/><stop offset='1' stop-color='%23c08328'/></linearGradient></defs><rect width='64' height='64' rx='16' fill='url(%23g)'/><path d='M32 14v36M20 50h24' stroke='%23fff' stroke-width='3' stroke-linecap='round' fill='none'/><path d='M14 24l8 14 8-14M34 24l8 14 8-14' stroke='%23fff' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round' fill='none'/><circle cx='32' cy='14' r='3' fill='%23fff'/></svg>">
+  <link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232563eb'/><path d='M32 14v36M20 50h24' stroke='%23fff' stroke-width='3' stroke-linecap='round' fill='none'/><path d='M14 24l8 14 8-14M34 24l8 14 8-14' stroke='%23fff' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round' fill='none'/><circle cx='32' cy='14' r='3' fill='%23fff'/></svg>">
   <style>
     :root {
-      --bg: #fdf6ee;
-      --panel: rgba(255, 251, 244, 0.92);
-      --line: rgba(120, 80, 40, 0.10);
-      --line-strong: rgba(120, 80, 40, 0.18);
-      --text: #3d2a1c;
-      --muted: #8a7460;
-      --gold: #c08328;
-      --cyan: #d97757;
-      --green: #6b9e4f;
-      --red: #c0492f;
+      --bg: #f5f7fa;
+      --panel: #ffffff;
+      --line: #e8eaed;
+      --line-strong: #d4d7dc;
+      --text: #1f2329;
+      --muted: #8a9099;
+      --gold: #2563eb;
+      --gold-soft: rgba(37,99,235,0.10);
+      --cyan: #475569;
+      --green: #16a34a;
+      --red: #dc2626;
+      --shadow: 0 1px 2px rgba(20,26,36,0.04), 0 6px 20px rgba(20,26,36,0.05);
     }
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-    html, body { margin: 0; min-height: 100%; background: linear-gradient(180deg, #fdf6ee 0%, #f5e8d6 100%); color: var(--text); font-family: "PingFang SC", "Microsoft YaHei", sans-serif; }
+    html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--text); font-family: "PingFang SC", "Microsoft YaHei", sans-serif; }
     body { padding: 16px; max-width: 680px; margin: 0 auto; padding-bottom: 60px; }
-    .head { padding: 18px 16px; border-radius: 20px; border: 1px solid var(--line); background: var(--panel); margin-bottom: 16px; display: flex; align-items: flex-start; gap: 12px; }
+    .head { padding: 18px 16px; border-radius: 14px; border: 1px solid var(--line); background: var(--panel); margin-bottom: 16px; display: flex; align-items: flex-start; gap: 12px; box-shadow: var(--shadow); }
     .head .head-main { flex: 1; min-width: 0; }
-    .head .sign-submit-btn { flex-shrink: 0; align-self: center; padding: 12px 18px; border-radius: 12px; border: 1px solid var(--gold); background: linear-gradient(135deg, var(--gold), var(--cyan)); color: #fff; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; white-space: nowrap; }
+    .head .sign-submit-btn { flex-shrink: 0; align-self: center; padding: 12px 18px; border-radius: 10px; border: 1px solid var(--gold); background: var(--gold); color: #fff; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; white-space: nowrap; }
     .head .sign-submit-btn:active { transform: scale(.98); }
-    .head .sign-submit-btn.disabled { background: var(--line-strong); border-color: var(--line-strong); color: var(--muted); cursor: not-allowed; }
+    .head .sign-submit-btn.disabled { background: #eef0f3; border-color: var(--line-strong); color: var(--muted); cursor: not-allowed; }
     .head .eyebrow { color: var(--gold); font-size: 11px; letter-spacing: .18em; text-transform: uppercase; margin-bottom: 8px; }
     .head h1 { margin: 0; font-size: 20px; line-height: 1.3; }
     .head .meta { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
-    .head .tag { padding: 5px 10px; border-radius: 999px; border: 1px solid var(--line); background: rgba(255, 251, 244, .5); font-size: 12px; color: #6b4a2a; }
+    .head .tag { padding: 5px 10px; border-radius: 999px; border: 1px solid var(--line); background: #f8fafc; font-size: 12px; color: #475569; }
     .head .judge { color: var(--cyan); font-size: 13px; margin-top: 8px; }
 
     .vendor-list { display: grid; gap: 12px; }
-    .vendor-item { padding: 16px; border-radius: 18px; border: 1px solid var(--line); background: var(--panel); cursor: pointer; transition: all .15s; }
+    .vendor-item { padding: 16px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel); cursor: pointer; transition: all .15s; box-shadow: var(--shadow); }
     .vendor-item:active { transform: scale(.99); }
     .vendor-item.locked { opacity: .5; cursor: not-allowed; }
-    .vendor-item.active { border-color: var(--gold); background: linear-gradient(135deg, rgba(192,131,40,.10), rgba(217,119,87,.06)); }
+    .vendor-item.active { border-color: var(--gold); background: var(--gold-soft); }
     .vendor-item .vh { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
     .vendor-item .name { font-size: 16px; font-weight: 600; }
     .vendor-item .slot { color: var(--muted); font-size: 12px; margin-top: 6px; }
-    .vendor-item .status { padding: 5px 10px; border-radius: 999px; font-size: 11px; border: 1px solid rgba(120,80,40,.12); }
-    .st-done { background: rgba(107,158,79,.12); color: var(--green); }
-    .st-doing { background: rgba(192,131,40,.14); color: var(--gold); }
-    .st-todo { background: rgba(217,119,87,.10); color: var(--cyan); }
+    .vendor-item .status { padding: 5px 10px; border-radius: 999px; font-size: 11px; border: 1px solid var(--line); }
+    .st-done { background: rgba(22,163,74,.10); color: var(--green); }
+    .st-doing { background: var(--gold-soft); color: var(--gold); }
+    .st-todo { background: #f1f5f9; color: var(--cyan); }
     .vendor-item .biz { color: var(--gold); font-size: 12px; margin-top: 8px; }
     .vendor-item .mytotal { color: var(--muted); font-size: 12px; margin-top: 4px; }
     .vendor-item .mytotal strong { color: var(--text); }
 
-    .back { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 10px; border: 1px solid var(--line-strong); background: rgba(255, 251, 244, .6); color: var(--text); font-size: 13px; cursor: pointer; margin-bottom: 14px; }
+    .back { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 10px; border: 1px solid var(--line-strong); background: #fff; color: var(--text); font-size: 13px; cursor: pointer; margin-bottom: 14px; }
 
-    .dim-card { padding: 16px; border-radius: 18px; border: 1px solid var(--line); background: var(--panel); margin-bottom: 12px; }
+    .dim-card { padding: 16px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel); margin-bottom: 12px; box-shadow: var(--shadow); }
     .dim-card .top { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px; }
     .dim-card .top strong { font-size: 15px; }
     .dim-card .max { color: var(--muted); font-size: 12px; }
-    .dim-card .ai { padding: 10px; border-radius: 10px; background: rgba(217,119,87,.08); border: 1px solid rgba(217,119,87,.25); margin-bottom: 10px; font-size: 12px; color: var(--cyan); }
+    .dim-card .ai { padding: 10px; border-radius: 10px; background: #f1f5f9; border: 1px solid var(--line); margin-bottom: 10px; font-size: 12px; color: var(--cyan); }
     .dim-card .ai .ai-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
     .dim-card .ai .adopt { color: var(--gold); cursor: pointer; text-decoration: underline; flex-shrink: 0; }
     .dim-card .ai .ai-ev { display: block; margin-top: 6px; color: var(--muted); line-height: 1.5; word-break: break-word; }
     .dim-card .ai .ai-ev.collapsed { display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
     .dim-card .ai .ai-toggle { display: inline-block; margin-top: 4px; color: var(--gold); cursor: pointer; text-decoration: underline; font-size: 12px; }
     .score-row { display: flex; align-items: center; gap: 10px; }
-    .score-input { width: 90px; padding: 12px; border-radius: 12px; border: 1px solid var(--line-strong); background: rgba(255, 251, 244, .8); color: var(--text); font-size: 22px; font-weight: 700; text-align: center; font-family: inherit; }
-    .score-input:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 3px rgba(192,131,40,.15); }
+    .score-input { width: 90px; padding: 12px; border-radius: 10px; border: 1px solid var(--line-strong); background: #fff; color: var(--text); font-size: 22px; font-weight: 700; text-align: center; font-family: inherit; }
+    .score-input:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-soft); }
     .quick { display: flex; gap: 6px; flex-wrap: wrap; }
-    .quick button { padding: 8px 14px; border-radius: 10px; border: 1px solid var(--line); background: rgba(255, 251, 244, .5); color: var(--text); font-size: 13px; cursor: pointer; font-family: inherit; }
-    .quick button:active { background: rgba(192,131,40,.15); }
-    .dim-card .bar { height: 7px; border-radius: 999px; background: rgba(120,80,40,.10); overflow: hidden; margin-top: 10px; }
-    .dim-card .bar i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #d97757, #c08328); transition: width .3s; }
+    .quick button { padding: 8px 14px; border-radius: 10px; border: 1px solid var(--line); background: #f8fafc; color: var(--text); font-size: 13px; cursor: pointer; font-family: inherit; }
+    .quick button:active { background: var(--gold-soft); }
+    .dim-card .bar { height: 7px; border-radius: 999px; background: #eef0f3; overflow: hidden; margin-top: 10px; }
+    .dim-card .bar i { display: block; height: 100%; border-radius: inherit; background: var(--gold); transition: width .3s; }
     .dim-card .desc { color: var(--muted); font-size: 12px; margin: 8px 0 0; }
     .dim-card .details { margin: 10px 0 0; padding-left: 18px; color: var(--muted); font-size: 12px; line-height: 1.7; }
     .dim-card .details li { margin-bottom: 3px; }
-    .dim-card .standard { margin-top: 8px; padding: 8px 10px; border-radius: 8px; background: rgba(192,131,40,.08); border: 1px solid rgba(192,131,40,.22); color: var(--gold); font-size: 11px; line-height: 1.5; }
+    .dim-card .standard { margin-top: 8px; padding: 8px 10px; border-radius: 8px; background: var(--gold-soft); border: 1px solid rgba(37,99,235,.22); color: var(--gold); font-size: 11px; line-height: 1.5; }
 
-    .summary { padding: 16px; border-radius: 18px; border: 1px solid var(--gold); background: linear-gradient(135deg, rgba(192,131,40,.10), rgba(217,119,87,.06)); margin-top: 16px; text-align: center; }
+    .summary { padding: 16px; border-radius: 12px; border: 1px solid var(--gold); background: var(--gold-soft); margin-top: 16px; text-align: center; }
     .summary small { display: block; color: var(--muted); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; margin-bottom: 6px; }
     .summary strong { font-size: 30px; color: var(--gold); }
 
-    .save-bar { display: flex; align-items: center; gap: 12px; justify-content: center; margin-top: 14px; padding: 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--panel); }
-    .save-bar .save-btn { padding: 12px 32px; border-radius: 12px; border: 1px solid var(--gold); background: linear-gradient(135deg, rgba(192,131,40,.18), rgba(217,119,87,.12)); color: var(--gold); font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; }
+    .save-bar { display: flex; align-items: center; gap: 12px; justify-content: center; margin-top: 14px; padding: 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel); }
+    .save-bar .save-btn { padding: 12px 32px; border-radius: 10px; border: 1px solid var(--gold); background: var(--gold-soft); color: var(--gold); font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; }
     .save-bar .save-btn:active { transform: scale(.98); }
     .save-bar .save-hint { color: var(--muted); font-size: 12px; }
 
-    .dim-comment { width: 100%; margin-top: 8px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line); background: rgba(255,251,244,.6); color: var(--text); font-size: 12px; font-family: inherit; resize: vertical; min-height: 44px; }
+    .dim-comment { width: 100%; margin-top: 8px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line); background: #f8fafc; color: var(--text); font-size: 12px; font-family: inherit; resize: vertical; min-height: 44px; }
     .dim-comment:focus { outline: none; border-color: var(--gold); }
-    .dim-comment.required { border-color: var(--red); background: rgba(192,73,47,.05); }
+    .dim-comment.required { border-color: var(--red); background: rgba(220,38,38,.05); }
     .dim-comment-hint { color: var(--red); font-size: 11px; margin-top: 4px; display: none; }
     .dim-comment.required + .dim-comment-hint { display: block; }
 
-    .vendor-comment .overall { width: 100%; padding: 10px; border-radius: 10px; border: 1px solid var(--line-strong); background: rgba(255,251,244,.85); color: var(--text); font-size: 13px; font-family: inherit; resize: vertical; min-height: 80px; }
-    .vendor-comment .required .overall { border-color: var(--red); background: rgba(192,73,47,.05); }
+    .vendor-comment .overall { width: 100%; padding: 10px; border-radius: 10px; border: 1px solid var(--line-strong); background: #fff; color: var(--text); font-size: 13px; font-family: inherit; resize: vertical; min-height: 80px; }
+    .vendor-comment .required .overall { border-color: var(--red); background: rgba(220,38,38,.05); }
 
     /* 签名区 */
-    .sign-section { margin-top: 16px; padding: 16px; border-radius: 18px; border: 1px solid var(--gold); background: linear-gradient(135deg, rgba(192,131,40,.10), rgba(217,119,87,.06)); }
+    .sign-section { margin-top: 16px; padding: 16px; border-radius: 12px; border: 1px solid var(--gold); background: var(--gold-soft); }
     .sign-section h3 { margin: 0 0 10px; font-size: 15px; color: var(--gold); }
-    .sign-section .overall { width: 100%; margin-bottom: 12px; padding: 10px; border-radius: 10px; border: 1px solid var(--line-strong); background: rgba(255,251,244,.85); color: var(--text); font-size: 13px; font-family: inherit; resize: vertical; min-height: 80px; }
+    .sign-section .overall { width: 100%; margin-bottom: 12px; padding: 10px; border-radius: 10px; border: 1px solid var(--line-strong); background: #fff; color: var(--text); font-size: 13px; font-family: inherit; resize: vertical; min-height: 80px; }
     .sign-section .overall:focus { outline: none; border-color: var(--gold); }
     .sig-pad-wrap { background: #fff; border: 2px dashed var(--line-strong); border-radius: 12px; padding: 8px; position: relative; }
     .sig-pad { display: block; width: 100%; height: 160px; touch-action: none; cursor: crosshair; }
-    .sig-clear { margin-top: 6px; padding: 4px 12px; border-radius: 8px; border: 1px solid var(--line); background: rgba(255,251,244,.7); color: var(--muted); font-size: 12px; cursor: pointer; font-family: inherit; }
-    .sign-btn { display: block; width: 100%; margin-top: 12px; padding: 14px; border-radius: 12px; border: 1px solid var(--gold); background: linear-gradient(135deg, var(--gold), var(--cyan)); color: #fff; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; }
+    .sig-clear { margin-top: 6px; padding: 4px 12px; border-radius: 8px; border: 1px solid var(--line); background: #f8fafc; color: var(--muted); font-size: 12px; cursor: pointer; font-family: inherit; }
+    .sign-btn { display: block; width: 100%; margin-top: 12px; padding: 14px; border-radius: 12px; border: 1px solid var(--gold); background: var(--gold); color: #fff; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; }
     .sign-btn:active { transform: scale(.98); }
 
     /* 手机全屏签名页 */
@@ -114,29 +116,29 @@
     .msign-judge { color: var(--cyan); font-size: 13px; margin-top: 4px; }
     .msign-pad-wrap { flex: 1; position: relative; background: #fff; border: 2px dashed var(--line-strong); border-radius: 14px; padding: 8px; min-height: 320px; display: flex; }
     .msign-pad { display: block; width: 100%; flex: 1; touch-action: none; cursor: crosshair; }
-    .msign-baseline { position: absolute; left: 12%; right: 12%; bottom: 30%; height: 0; border-bottom: 1px dashed rgba(120,80,40,.25); pointer-events: none; }
-    .msign-clear { position: absolute; top: 8px; right: 8px; padding: 6px 14px; border-radius: 8px; border: 1px solid var(--line); background: rgba(255,251,244,.85); color: var(--muted); font-size: 12px; cursor: pointer; font-family: inherit; }
-    .msign-go { width: 100%; margin-top: 14px; padding: 16px; border-radius: 14px; border: 1px solid var(--gold); background: linear-gradient(135deg, var(--gold), var(--cyan)); color: #fff; font-size: 16px; font-weight: 700; cursor: pointer; font-family: inherit; flex-shrink: 0; }
+    .msign-baseline { position: absolute; left: 12%; right: 12%; bottom: 30%; height: 0; border-bottom: 1px dashed var(--line-strong); pointer-events: none; }
+    .msign-clear { position: absolute; top: 8px; right: 8px; padding: 6px 14px; border-radius: 8px; border: 1px solid var(--line); background: #fff; color: var(--muted); font-size: 12px; cursor: pointer; font-family: inherit; }
+    .msign-go { width: 100%; margin-top: 14px; padding: 16px; border-radius: 14px; border: 1px solid var(--gold); background: var(--gold); color: #fff; font-size: 16px; font-weight: 700; cursor: pointer; font-family: inherit; flex-shrink: 0; }
     .msign-go:active { transform: scale(.98); }
     .sign-btn:disabled { opacity: .5; cursor: not-allowed; }
 
     /* 供应商列表完成状态 */
     .vendor-item { position: relative; }
-    .vendor-item.all-done { border-color: rgba(107,158,79,.35); background: rgba(107,158,79,.04); }
-    .vendor-item.has-missing { border-color: rgba(192,73,47,.25); }
+    .vendor-item.all-done { border-color: rgba(22,163,74,.35); background: rgba(22,163,74,.04); }
+    .vendor-item.has-missing { border-color: rgba(220,38,38,.25); }
     .complete-badge { display: inline-block; margin-top: 8px; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; }
-    .complete-badge.done { background: rgba(107,158,79,.12); color: var(--green); }
-    .complete-badge.incomplete { background: rgba(192,73,47,.10); color: var(--red); }
+    .complete-badge.done { background: rgba(22,163,74,.10); color: var(--green); }
+    .complete-badge.incomplete { background: rgba(220,38,38,.10); color: var(--red); }
 
-    .locked-card { margin-top: 16px; padding: 16px; border-radius: 18px; border: 1px solid var(--green); background: rgba(107,158,79,.08); text-align: center; }
+    .locked-card { margin-top: 16px; padding: 16px; border-radius: 12px; border: 1px solid var(--green); background: rgba(22,163,74,.06); text-align: center; }
     .locked-card img { max-width: 240px; max-height: 80px; margin: 10px auto; display: block; border: 1px solid var(--line); border-radius: 8px; background: #fff; padding: 4px; }
     .locked-card .lk-time { color: var(--muted); font-size: 12px; margin-top: 6px; }
-    .locked-card .lk-overall { margin-top: 10px; padding: 10px; border-radius: 10px; background: rgba(255,251,244,.7); border: 1px solid var(--line); font-size: 13px; text-align: left; color: var(--text); line-height: 1.6; }
+    .locked-card .lk-overall { margin-top: 10px; padding: 10px; border-radius: 10px; background: #fff; border: 1px solid var(--line); font-size: 13px; text-align: left; color: var(--text); line-height: 1.6; }
 
     /* 已锁定后的打分检查列表 */
-    .lk-scores { margin-top: 16px; padding: 16px; border-radius: 18px; border: 1px solid var(--line); background: var(--panel); }
+    .lk-scores { margin-top: 16px; padding: 16px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel); }
     .lk-scores h3 { margin: 0 0 12px; font-size: 15px; color: var(--gold); }
-    .lk-vendor { padding: 12px; border-radius: 12px; border: 1px solid var(--line); background: rgba(255,251,244,.5); margin-bottom: 10px; }
+    .lk-vendor { padding: 12px; border-radius: 10px; border: 1px solid var(--line); background: #f8fafc; margin-bottom: 10px; }
     .lk-vname { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
     .lk-vtotal { font-size: 12px; font-weight: 600; color: var(--gold); }
     .lk-dims { display: grid; gap: 6px; }
@@ -147,30 +149,30 @@
     .lk-dim small { color: var(--muted); font-size: 11px; }
 
     /* 完成签名弹层 */
-    .auto-sign-modal { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 16px; background: rgba(80,50,20,.5); }
+    .auto-sign-modal { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 16px; background: rgba(20,26,36,.45); }
     .auto-sign-modal[hidden] { display: none !important; }
-    .auto-sign-box { width: 100%; max-width: 720px; max-height: 90vh; overflow-y: auto; background: linear-gradient(180deg, #fffbf4, #faf0e2); border: 1px solid var(--gold); border-radius: 22px; padding: 22px; }
+    .auto-sign-box { width: 100%; max-width: 720px; max-height: 90vh; overflow-y: auto; background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 22px; box-shadow: var(--shadow); }
     .auto-sign-box h3 { margin: 0 0 6px; font-size: 18px; color: var(--gold); }
     .auto-sign-box p { margin: 0 0 16px; color: var(--muted); font-size: 13px; line-height: 1.6; }
     .sign-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-    .sign-choice { padding: 14px; border: 1px solid var(--line); border-radius: 14px; display: flex; flex-direction: column; }
+    .sign-choice { padding: 14px; border: 1px solid var(--line); border-radius: 12px; display: flex; flex-direction: column; }
     .sc-title { font-weight: 700; font-size: 13px; margin-bottom: 10px; color: var(--gold); }
     .qr-wrap { display: flex; justify-content: center; padding: 6px; background:#fff; border-radius: 10px; margin-bottom: 8px; }
     .qr-wrap canvas, .qr-wrap img { width: 132px !important; height: 132px !important; }
     .sc-hint { color: var(--muted); font-size: 11px; line-height: 1.5; flex: 1; }
-    .sc-link { display:block; margin-top: 8px; width:100%; padding:7px; border:1px solid var(--line-strong); background:rgba(255,251,244,.7); border-radius:8px; color:var(--text); font-size:11px; cursor:pointer; font-family:inherit; }
+    .sc-link { display:block; margin-top: 8px; width:100%; padding:7px; border:1px solid var(--line-strong); background:#f8fafc; border-radius:8px; color:var(--text); font-size:11px; cursor:pointer; font-family:inherit; }
     .sign-choice .sig-pad-wrap { padding: 6px; flex: 1; display: flex; }
     .sign-choice .sig-pad { height: 100% !important; width: 100% !important; min-height: 180px; }
     .sign-choice .sig-actions { margin-top: 6px; display:flex; justify-content:flex-end; }
-    .sign-choice .sig-actions button { padding: 5px 12px; border-radius: 8px; border: 1px solid var(--line); background: rgba(255,251,244,.7); color: var(--muted); font-size: 12px; cursor: pointer; font-family: inherit; }
+    .sign-choice .sig-actions button { padding: 5px 12px; border-radius: 8px; border: 1px solid var(--line); background: #f8fafc; color: var(--muted); font-size: 12px; cursor: pointer; font-family: inherit; }
     .sc-divider { text-align:center; color:var(--muted); font-size:12px; margin: 8px 0; }
     .auto-sign-box .sig-pad-wrap { background:#fff; border:2px dashed var(--line-strong); border-radius:12px; padding:8px; }
     .auto-sign-box .sig-pad { display: block; width: 100%; touch-action: none; cursor: crosshair; }
     .auto-sign-box .btn-group { display: flex; gap: 10px; justify-content: center; margin-top: 16px; }
-    .auto-sign-box button { flex: 1; padding: 12px 14px; border-radius: 12px; font-size: 15px; font-weight: 700; font-family: inherit; cursor: pointer; border: 1px solid; }
-    .auto-sign-box .btn-primary { background: linear-gradient(135deg, var(--gold), var(--cyan)); border-color: var(--gold); color: #fff; }
+    .auto-sign-box button { flex: 1; padding: 12px 14px; border-radius: 10px; font-size: 15px; font-weight: 700; font-family: inherit; cursor: pointer; border: 1px solid; }
+    .auto-sign-box .btn-primary { background: var(--gold); border-color: var(--gold); color: #fff; }
     .auto-sign-box .btn-primary:disabled { opacity:.5; cursor:not-allowed; }
-    .auto-sign-box .btn-default { background: rgba(255,251,244,.7); border-color: var(--line-strong); color: var(--text); }
+    .auto-sign-box .btn-default { background: #f8fafc; border-color: var(--line-strong); color: var(--text); }
     @media (max-width: 600px) {
       .sign-cols { grid-template-columns: 1fr; }
       .sign-choice .sig-pad { min-height: 160px; }
@@ -179,37 +181,37 @@
     .offline-bar { position: fixed; top: 0; left: 0; right: 0; z-index: 80; padding: 8px 14px; background: var(--red); color: #fff; font-size: 12px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,.15); }
     .offline-bar[hidden] { display: none; }
 
-    .empty { padding: 40px; text-align: center; color: var(--muted); border: 1px dashed var(--line); border-radius: 18px; }
-    .saved { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); padding: 8px 16px; border-radius: 999px; background: rgba(107,158,79,.18); color: var(--green); font-size: 12px; border: 1px solid rgba(107,158,79,.35); opacity: 0; transition: opacity .3s; }
+    .empty { padding: 40px; text-align: center; color: var(--muted); border: 1px dashed var(--line); border-radius: 14px; }
+    .saved { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); padding: 8px 16px; border-radius: 999px; background: rgba(22,163,74,.15); color: var(--green); font-size: 12px; border: 1px solid rgba(22,163,74,.30); opacity: 0; transition: opacity .3s; }
     .saved.show { opacity: 1; }
 
     /* 常驻顶部返回条 */
-    .topbar { position: sticky; top: 0; z-index: 20; display: none; align-items: center; gap: 10px; padding: 10px 12px; margin: -16px -16px 14px; background: rgba(253,246,238,.92); backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); }
+    .topbar { position: sticky; top: 0; z-index: 20; display: none; align-items: center; gap: 10px; padding: 10px 12px; margin: -16px -16px 14px; background: rgba(255,255,255,.92); backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); }
     .topbar.show { display: flex; }
     .topbar .back { margin: 0; }
     .topbar .title { font-size: 14px; font-weight: 600; flex: 1; }
-    .topbar .help { padding: 6px 12px; border-radius: 10px; border: 1px solid var(--line-strong); background: rgba(255,251,244,.6); color: var(--text); font-size: 12px; cursor: pointer; font-family: inherit; }
+    .topbar .help { padding: 6px 12px; border-radius: 10px; border: 1px solid var(--line-strong); background: #f8fafc; color: var(--text); font-size: 12px; cursor: pointer; font-family: inherit; }
 
     .help-bar { display: flex; justify-content: flex-end; margin-bottom: 12px; }
-    .help-bar button { padding: 6px 12px; border-radius: 10px; border: 1px solid var(--line-strong); background: rgba(255,251,244,.6); color: var(--text); font-size: 12px; cursor: pointer; font-family: inherit; }
+    .help-bar button { padding: 6px 12px; border-radius: 10px; border: 1px solid var(--line-strong); background: #f8fafc; color: var(--text); font-size: 12px; cursor: pointer; font-family: inherit; }
 
     /* 说明弹层 */
-    .modal { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 16px; background: rgba(80,50,20,.45); }
+    .modal { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 16px; background: rgba(20,26,36,.45); }
     .modal[hidden] { display: none !important; }
-    .modal-box { width: 100%; max-width: 480px; max-height: 85vh; overflow-y: auto; background: linear-gradient(180deg, #fffbf4, #faf0e2); border: 1px solid var(--line-strong); border-radius: 18px; padding: 18px; }
-    .modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; position: sticky; top: -18px; padding-top: 4px; background: linear-gradient(180deg, #fffbf4 80%, rgba(255,251,244,0)); z-index: 2; }
+    .modal-box { width: 100%; max-width: 480px; max-height: 85vh; overflow-y: auto; background: #fff; border: 1px solid var(--line-strong); border-radius: 14px; padding: 18px; box-shadow: var(--shadow); }
+    .modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; position: sticky; top: -18px; padding-top: 4px; background: #fff; z-index: 2; }
     .modal-head h3 { margin: 0; font-size: 15px; }
     .modal-body { color: var(--text); line-height: 1.8; font-size: 14px; }
     .modal-body p { margin: 0 0 10px; }
     .xbtn { padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: var(--muted); cursor: pointer; font-family: inherit; }
 
     .sign-cols { display: grid; grid-template-columns: 220px 1fr; gap: 14px; align-items: stretch; }
-    .sign-choice { padding: 12px; border: 1px solid var(--line); border-radius: 14px; margin-bottom: 0; }
+    .sign-choice { padding: 12px; border: 1px solid var(--line); border-radius: 12px; margin-bottom: 0; }
     .sc-title { font-weight: 700; font-size: 13px; margin-bottom: 8px; color: var(--gold); }
     .qr-wrap { display: flex; justify-content: center; padding: 6px; background:#fff; border-radius: 10px; margin-bottom: 6px; }
     .qr-wrap canvas, .qr-wrap img { width: 180px !important; height: 180px !important; }
     .sc-hint { color: var(--muted); font-size: 11px; line-height: 1.5; }
-    .sc-link { display:block; margin-top: 6px; width:100%; padding:6px; border:1px solid var(--line-strong); background:rgba(255,251,244,.7); border-radius:8px; color:var(--text); font-size:11px; cursor:pointer; font-family:inherit; }
+    .sc-link { display:block; margin-top: 6px; width:100%; padding:6px; border:1px solid var(--line-strong); background:#f8fafc; border-radius:8px; color:var(--text); font-size:11px; cursor:pointer; font-family:inherit; }
     .sign-choice .sig-pad-wrap { padding: 6px; height: 100%; }
     .sign-choice .sig-pad { height: 320px !important; width: 100% !important; }
     .sign-choice .sig-actions { margin-top: 4px; text-align: left; }
