@@ -2809,7 +2809,7 @@ archiveModal.addEventListener('click', (e) => {
   if (e.target === archiveModal) { closeArchiveModal(); return; }
   // 事件委托：archiveBody 内动态注入的按钮也走 handleAction
   const btn = e.target.closest('[data-action]');
-  if (btn && archiveBody.contains(btn)) handleAction(btn);
+  if (btn && archiveBody.contains(btn)) handleAction({ currentTarget: btn, target: e.target });
 });
 archiveModal.querySelectorAll('[data-action]').forEach(el => {
   el.addEventListener('click', handleAction);
