@@ -634,7 +634,7 @@ function buildSignSectionMd() {
       lines.push('');
       // 每家供应商各一级维度评分表（标准 markdown 表格，首尾带 |）
       if (state.vendors && state.vendors.length) {
-        const header = ['供应商', ...state.dimensions.map(d => d.name), '五维度总分'];
+        const header = ['供应商', ...state.dimensions.map(d => d.name), '技术合计'];
         lines.push('| ' + header.join(' | ') + ' |');
         lines.push('| ' + header.map(() => '---').join(' | ') + ' |');
         for (const v of state.vendors) {
@@ -642,8 +642,8 @@ function buildSignSectionMd() {
             const s = getScore(v.id, j.id, d.id);
             return (s === undefined || s === null || s === '') ? '—' : Number(s).toFixed(1);
           });
-          const grand = judgeTotalForVendor(v.id, j.id).toFixed(1);
-          lines.push('| ' + [v.name, ...vals, grand].join(' | ') + ' |');
+          const techTotal = judgeTotalForVendor(v.id, j.id).toFixed(1);
+          lines.push('| ' + [v.name, ...vals, techTotal].join(' | ') + ' |');
         }
         lines.push('');
       }
