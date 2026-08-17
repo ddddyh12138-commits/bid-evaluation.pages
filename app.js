@@ -2534,6 +2534,20 @@ async function handleAction(e) {
     case 'dl-archive-report': {
       const arc = (state.archives || []).find(a => a.id === el.dataset.aid);
       if (!arc) break;
+      // 优先下载用户上传的原 Word 文件，没有再用 reportMd 现场生成
+      if (arc.reportFile?.dataUrl) {
+        try {
+          const r = await fetch(arc.reportFile.dataUrl);
+          const blob = await r.blob();
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = arc.reportFile.name || `${arc.name || '评标报告'}.docx`;
+          a.click();
+          URL.revokeObjectURL(url);
+        } catch (e) { alert('下载失败：' + e.message); }
+        break;
+      }
       if (!arc.reportMd) { alert('该归档没有评标报告，请重新生成'); break; }
       // 把归档里的评委签名图按 judgeId 聚合，供 [SIG:] 占位符查图
       const arcMeta = {};
@@ -2903,15 +2917,16 @@ function openArchiveDetail(aid) {
 
     <h4>评标报告</h4>
     ${(() => {
+      const hasFile = !!arc.reportFile;
       const hasMd = !!arc.reportMd;
-      if (!hasMd) {
+      if (!hasFile && !hasMd) {
         // 没有报告：只显示重新生成按钮
         return `<div style="margin-top:4px;color:var(--muted);font-size:13px;">该归档未保存报告。
           <button class="btn btn-ghost" data-action="regen-archive-report" data-aid="${arc.id}" style="margin-left:8px;font-size:12px;">重新生成</button></div>`;
       }
-      // 有报告：只显示下载按钮（不显示重新生成）
+      // 有报告：显示下载按钮
       return `<div style="margin-top:4px;">
-        <details><summary>查看报告正文</summary><pre class="report-pre" style="max-height:40vh;margin-top:8px;">${escapeHtml(arc.reportMd)}</pre></details>
+        ${hasMd ? `<details><summary>查看报告正文</summary><pre class="report-pre" style="max-height:40vh;margin-top:8px;">${escapeHtml(arc.reportMd)}</pre></details>` : ''}
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
           <button class="btn btn-primary" data-action="dl-archive-report" data-aid="${arc.id}">下载 Word 报告</button>
         </div>
