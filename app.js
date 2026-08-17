@@ -262,6 +262,7 @@ function debounceGenVendorAi(vid, delay = GENERATE_AI_DEBOUNCE_MS) {
 }
 
 async function autoGenerateVendorAi(vid) {
+  delete aiGenTimers[vid];
   const text = (state.vendorMaterials?.[vid] || '').trim();
   if (!text) return;
   // 启动本轮请求，拿到自己的句柄
@@ -281,14 +282,49 @@ async function autoGenerateVendorAi(vid) {
     persistLocal();
     saveStateCloud();
     aiGenStatus[vid] = { text: `已生成 · ${((Date.now()-t0)/1000).toFixed(1)}s` };
-    renderAll();
+    safeRenderAll();
     setTimeout(() => { if (aiGenStatus[vid]?.text?.startsWith('已生成')) { delete aiGenStatus[vid]; const el = viewEl?.querySelector(`.ai-status[data-vid="${vid}"]`); if (el) el.textContent = ''; } }, 3000);
   } catch (e) {
     if (myReq.aborted) { if (myReq.timer) clearInterval(myReq.timer); return; }
     if (myReq.timer) clearInterval(myReq.timer);
     aiGenStatus[vid] = { text: '失败：' + e.message };
-    renderAll();
+    safeRenderAll();
+  } finally {
+    aiGenRequests[vid] = null;
   }
+}
+
+// 结果回来时若用户正在输入则只落本地，不重渲染，避免打断输入
+function safeRenderAll() {
+  if (isInputFocused()) { persistLocal(); return; }
+  renderAll();
+}
+
+// 后台补生成 watcher：无论在哪个 tab，只要有材料、没初评、当前没在跑，就自动补跑
+// 解决"切走 tab 后自动生成被中断、不再继续"的问题
+const pendingAiGen = {};      // vid -> true 本轮 watcher 已派发，防同家并发
+const watcherFailCount = {};  // vid -> 连续失败次数，超过上限跳过避免烧 token
+const WATCHER_FAIL_LIMIT = 3;
+function startPendingAiWatcher() {
+  setInterval(() => {
+    if (document.hidden) return;       // 标签页隐藏时暂停
+    if (isInputFocused()) return;      // 正在输入时不派发（不打断）
+    if (!state.aiConfig?.key) return;  // 没配 AI key 不跑
+    if (!state.vendors?.length) return;
+    for (const v of state.vendors) {
+      const hasMat = !!(state.vendorMaterials?.[v.id] || '').trim();
+      const hasResult = !!(state.aiSuggestions?.[v.id] && Object.keys(state.aiSuggestions[v.id]).length);
+      const inFlight = aiGenRequests[v.id] || aiGenTimers[v.id] || pendingAiGen[v.id];
+      if (!hasMat || hasResult || inFlight) continue;
+      if ((watcherFailCount[v.id] || 0) >= WATCHER_FAIL_LIMIT) continue;
+      pendingAiGen[v.id] = true;
+      autoGenerateVendorAi(v.id).then(() => {
+        const ok = !!(state.aiSuggestions?.[v.id] && Object.keys(state.aiSuggestions[v.id]).length);
+        watcherFailCount[v.id] = ok ? 0 : (watcherFailCount[v.id] || 0) + 1;
+      }).finally(() => { pendingAiGen[v.id] = false; });
+      break; // 一次只派发一家，避免并发烧 token
+    }
+  }, 5000);
 }
 
 // 渲染时把 aiGenStatus 写进 .ai-status
@@ -2005,6 +2041,7 @@ async function handleAction(e) {
       if (!text) { alert('请先粘贴或导入该供应商的材料'); return; }
       // 作废旧请求（auto 或手动），注册本轮句柄，防止并发回写覆盖
       if (aiGenRequests[vid]) aiGenRequests[vid].aborted = true;
+      delete aiGenStatus[vid];
       const myReq = { aborted: false, timer: null };
       aiGenRequests[vid] = myReq;
       const statusEl = viewEl.querySelector(`.ai-status[data-vid="${vid}"]`);
@@ -2023,12 +2060,15 @@ async function handleAction(e) {
         state.qualResults[vid] = res.quals || [];
         persistLocal();
         saveStateCloud();
+        delete aiGenStatus[vid];
         if (statusEl) statusEl.textContent = `已生成 · ${((Date.now()-t0)/1000).toFixed(1)}s`;
-        renderAll();
+        safeRenderAll();
       } catch (e) {
         if (myReq.aborted) { if (myReq.timer) clearInterval(myReq.timer); break; }
         if (myReq.timer) clearInterval(myReq.timer);
         if (statusEl) statusEl.textContent = '失败：' + e.message;
+      } finally {
+        aiGenRequests[vid] = null;
       }
       break;
     }
@@ -2595,6 +2635,7 @@ function startSilentReportWatcher() {
   }, 30000);
 }
 startSilentReportWatcher();
+startPendingAiWatcher();
 
 setInterval(async () => {
   if (document.hidden) return; // 标签页隐藏时暂停，避免重写 innerHTML 打断点击
