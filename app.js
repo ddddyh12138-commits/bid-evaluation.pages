@@ -667,7 +667,8 @@ function buildSignSectionMd() {
 
 // 把 Markdown 报告转成 Word 文档对象（docx.js）
 // 签名占位符 [SIG:judgeId] 会被替换成签名图片（dataURL → ImageRun）
-async function buildReportDocx(md) {
+async function buildReportDocx(md, ctx) {
+  buildReportCtx = ctx || null;
   const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, Table, TableCell, TableRow, WidthType, BorderStyle, ImageRun } = docx;
   const children = [];
   const lines = md.split('\n');
@@ -692,11 +693,11 @@ async function buildReportDocx(md) {
 
   for (let raw of lines) {
     raw = raw.trimEnd();
-    // 签名图片占位符
+    // 签名图片占位符：先从当前 judgeMeta 找，找不到就从归档快照里找（历史报告下载用）
     const sigMatch = raw.match(/^\[SIG:(.+?)\]$/);
     if (sigMatch) {
       const jid = sigMatch[1];
-      const m = judgeMeta[jid] || {};
+      const m = judgeMeta[jid] || buildReportCtx?.judgeMeta?.[jid] || {};
       if (m.signature) {
         try {
           const data = await dataUrlToU8(m.signature);
@@ -2432,9 +2433,19 @@ async function handleAction(e) {
     }
     case 'dl-archive-report': {
       const arc = (state.archives || []).find(a => a.id === el.dataset.aid);
-      if (!arc || !arc.reportMd) break;
+      if (!arc || !arc.reportMd) { alert('该归档没有评标报告'); break; }
+      // 把归档里的评委签名图按 judgeId 聚合，供 [SIG:] 占位符查图
+      const arcMeta = {};
+      for (const j of (arc.judgeSnapshot || [])) {
+        if (j.signature) {
+          // judgeSnapshot 没存 judgeId，用名字回匹配当前 state.judges 拿 id
+          const jd = (state.judges || []).find(x => x.name === j.name);
+          const jid = jd?.id || j.name;
+          arcMeta[jid] = { signature: j.signature, signedAt: j.signedAt, locked: true };
+        }
+      }
       try {
-        const doc = await buildReportDocx(arc.reportMd);
+        const doc = await buildReportDocx(arc.reportMd, { judgeMeta: arcMeta });
         const { Packer } = docx;
         Packer.toBlob(doc).then(blob => {
           const url = URL.createObjectURL(blob);
@@ -2634,6 +2645,7 @@ const reportStatus = document.getElementById('reportStatus');
 const reportCopy = document.getElementById('reportCopy');
 let lastReportMd = '';
 let lastReportDoc = null;
+let buildReportCtx = null;  // 下载历史报告时传入归档的 judgeMeta，供 [SIG:] 占位符查签名图
 let reportGenerating = false;
 function openReportModal() {
   reportStatus.textContent = '准备中…';
