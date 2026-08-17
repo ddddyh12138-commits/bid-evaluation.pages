@@ -1607,15 +1607,16 @@ function viewDashboard() {
         })()}
       </div>
       <div class="cross-vendor-box" style="margin-top:14px;">
-        <details ${crossAnalysis ? '' : 'open'}>
+        <details>
           <summary style="cursor:pointer;font-size:13px;color:var(--gold);font-weight:600;display:flex;align-items:center;justify-content:space-between;list-style:none;">
             <span>供应商横评 ${crossAnalysis ? '· 已生成' : ''}</span>
-            <span class="toggle-icon" style="font-size:11px;color:var(--muted);">${crossAnalysis ? '展开 ▾' : ''}</span>
+            <span class="toggle-icon" style="font-size:11px;color:var(--muted);">展开 ▾</span>
           </summary>
           <div style="margin-top:10px;">
           ${crossAnalysis
-            ? `<div style="color:var(--muted);font-size:12px;margin-bottom:8px;"><strong style="color:var(--text);">最推荐：</strong>${escapeHtml(extractCrossRecommendation(crossAnalysis))}</div>
-               <div class="cross-vendor-content">${escapeHtml(crossAnalysis).replace(/\n/g, '<br>')}</div>`
+            ? `<div style="color:var(--text);font-size:13px;margin-bottom:8px;line-height:1.6;"><strong style="color:var(--gold);">综合结论·最推荐：</strong>${escapeHtml(extractCrossRecommendation(crossAnalysis))}</div>
+               <div class="cross-vendor-content" style="display:none;">${escapeHtml(crossAnalysis).replace(/\n/g, '<br>')}</div>
+               <button class="btn btn-ghost" data-action="toggle-cross-detail" style="font-size:12px;padding:4px 10px;">展开查看完整横评</button>`
             : `<div class="anomaly-ok">${hasAiEnough ? '点击右上角「生成供应商横评」按钮生成横向对比分析。' : '所有供应商都上传材料后，可一键生成横评（评分工作台右上角按钮）。'}</div>`}
           </div>
         </details>
@@ -2232,6 +2233,15 @@ async function handleAction(e) {
       }
       crossAnalysisGenerating = false;
       renderAll();
+      break;
+    }
+    case 'toggle-cross-detail': {
+      const box = e.target.closest('.cross-vendor-box') || e.target.closest('details');
+      const detail = box && box.querySelector('.cross-vendor-content');
+      if (!detail) break;
+      const shown = detail.style.display !== 'none';
+      detail.style.display = shown ? 'none' : 'block';
+      e.target.textContent = shown ? '展开查看完整横评' : '收起';
       break;
     }
     case 'download-report':
