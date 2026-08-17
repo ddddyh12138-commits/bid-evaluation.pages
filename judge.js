@@ -753,8 +753,17 @@ function checkVendorCommentBeforeLeave() {
   if (!activeVendorId || myMeta.locked) return true;
   const v = state.vendors.find(x => x.id === activeVendorId);
   if (!v || !state.dimensions.length) return true;
+  // 只对已讲完（done）的供应商强制校验；讲标中/未开始的允许自由进出
   if (effectiveStatus(v) !== 'done') return true;
-  // 异常分（低于满分 60%）未填扣分依据 → 拦返回
+  // 1) 有维度未打分 → 拦返回，聚焦第一个空分数
+  const missingDim = state.dimensions.find(d => myScore(v.id, d.id) == null);
+  if (missingDim) {
+    alert(`「${v.name} · ${missingDim.name}」还未打分，请打完分再返回`);
+    const input = app.querySelector(`.score-input[data-did="${missingDim.id}"]`);
+    if (input) input.focus();
+    return false;
+  }
+  // 2) 异常分（低于满分 60%）未填扣分依据 → 拦返回
   for (const d of state.dimensions) {
     const val = myScore(v.id, d.id);
     if (val != null && isAnomaly(d, val) && !myComment(v.id, d.id).trim()) {
@@ -764,8 +773,7 @@ function checkVendorCommentBeforeLeave() {
       return false;
     }
   }
-  const allScored = state.dimensions.every(d => myScore(v.id, d.id) != null);
-  if (!allScored) return true;
+  // 3) 供应商总评未填写 → 拦返回
   if (!myVendorComment(v.id).trim()) {
     alert(`「${v.name}」的供应商总评未填写，请填写后再返回`);
     const overallEl = app.querySelector('[data-action="set-vendor-comment"]');
