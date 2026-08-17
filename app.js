@@ -2054,7 +2054,7 @@ function bindViewEvents() {
   // 通用 action（view 内）
   viewEl.querySelectorAll('[data-action]').forEach(el => {
     const a = el.dataset.action;
-    if (['add-vendor','del-vendor','add-dim','del-dim','add-judge','del-judge','pick-vendor','pick-judge','parse-paste-modal','auto-end-modal','open-meeting','close-meeting','save-meeting','gen-vendor-ai','clear-vendor-ai','gen-report','gen-cross-analysis','download-report','archive-project','open-archive','del-archive','clone-from-archive','adopt-from-similar','filter-history','set-supplier-note','toggle-blacklist','copy-link','unlock-judge','advance-vendor','set-current-vendor','view-archive-cross','toggle-cross-detail'].includes(a)) {
+    if (['add-vendor','del-vendor','add-dim','del-dim','add-judge','del-judge','pick-vendor','pick-judge','parse-paste-modal','auto-end-modal','open-meeting','close-meeting','save-meeting','gen-vendor-ai','clear-vendor-ai','gen-report','gen-cross-analysis','download-report','archive-project','open-archive','del-archive','clone-from-archive','adopt-from-similar','filter-history','set-supplier-note','toggle-blacklist','copy-link','unlock-judge','advance-vendor','set-current-vendor','view-archive-cross','toggle-cross-detail','toggle-archive-cross'].includes(a)) {
       el.addEventListener('click', handleAction);
     }
   });
@@ -2342,6 +2342,17 @@ async function handleAction(e) {
     }
     case 'view-archive-cross': {
       openArchiveCrossModal(el.dataset.aid);
+      break;
+    }
+    case 'toggle-archive-cross': {
+      const box = e.target.closest('.archive-cross-box');
+      if (!box) break;
+      const detail = box.querySelector('.archive-cross-content');
+      const icon = box.querySelector('.toggle-icon');
+      if (!detail) break;
+      const shown = detail.style.display !== 'none';
+      detail.style.display = shown ? 'none' : 'block';
+      if (icon) icon.textContent = shown ? '展开 ▾' : '收起 ▴';
       break;
     }
     case 'open-archive': {
@@ -2746,9 +2757,19 @@ function openArchiveDetail(aid) {
       return `<h4>评委评分</h4><div class="judge-sig-list">${rows}</div>`;
     })()}
 
-    ${arc.crossVendorAnalysis ? `<h4>供应商横评</h4><div style="display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap;"><div style="flex:1;min-width:240px;color:var(--text);font-size:13px;line-height:1.8;max-height:120px;overflow:hidden;white-space:pre-wrap;position:relative;">${escapeHtml(arc.crossVendorAnalysis.slice(0, 200))}${arc.crossVendorAnalysis.length > 200 ? '…' : ''}</div><button class="btn" data-action="view-archive-cross" data-aid="${arc.id}">查看完整横评</button></div>` : ''}
+    ${arc.crossVendorAnalysis ? `<h4>供应商横评</h4><div class="archive-cross-box" data-aid="${arc.id}" style="margin-top:4px;">
+      <div data-action="toggle-archive-cross" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-size:13px;color:var(--gold);font-weight:600;">
+        <span>综合结论·最推荐（点击展开完整横评）</span>
+        <span class="toggle-icon" style="font-size:11px;color:var(--muted);">展开 ▾</span>
+      </div>
+      <div class="archive-cross-summary" style="color:var(--text);font-size:13px;margin-top:8px;line-height:1.7;">${formatCrossSummary(extractCrossRecommendation(arc.crossVendorAnalysis))}</div>
+      <div class="archive-cross-content" style="display:none;margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);">${formatCrossFull(extractCrossRest(arc.crossVendorAnalysis))}</div>
+    </div>` : ''}
 
-    ${arc.reportMd ? `<details><summary>评标报告</summary><pre class="report-pre" style="max-height:40vh;margin-top:8px;">${escapeHtml(arc.reportMd)}</pre><button class="btn btn-primary" data-action="dl-archive-report" data-aid="${arc.id}" style="margin-top:8px;">下载 Word</button></details>` : ''}
+    ${arc.reportMd ? `<h4>评标报告</h4><div style="margin-top:4px;">
+      <details><summary>查看报告正文</summary><pre class="report-pre" style="max-height:40vh;margin-top:8px;">${escapeHtml(arc.reportMd)}</pre></details>
+      <button class="btn btn-primary" data-action="dl-archive-report" data-aid="${arc.id}" style="margin-top:8px;">下载 Word 报告</button>
+    </div>` : ''}
     ${arc.tenderReqs ? `<details><summary>招标要求</summary><pre class="report-pre" style="max-height:30vh;margin-top:8px;">${escapeHtml(arc.tenderReqs)}</pre></details>` : ''}
     ${(() => {
       const sims = similarArchives(arc);
