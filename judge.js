@@ -100,6 +100,7 @@ async function refreshState() {
     if (!state || !fresh) return;
     state.vendors = fresh.vendors;
     state.aiSuggestions = fresh.aiSuggestions;
+    state.crossVendorAnalysis = fresh.crossVendorAnalysis || '';
     state.project = fresh.project;
     if (data.judgeMeta) myMeta = data.judgeMeta;
     // 检测解锁：上次锁定现在未锁 → 清空本地打分/总评，强制重新打分
@@ -264,6 +265,7 @@ function renderScoring() {
       <h1>${escapeHtml(v.name)}</h1>
       <div class="judge">商务分 ${v.businessScore?.toFixed(1) || 0} / 50 · CPM ¥${(v.cpm||0).toFixed(2)}</div>
     </div>
+    ${renderCrossReviewBlock()}
     ${state.dimensions.map(d => {
       const val = myScore(v.id, d.id);
       const ai = state.aiSuggestions?.[v.id]?.[d.id];
@@ -338,6 +340,59 @@ function renderAiBlock(vid, did, ai) {
     if (long) html += `<span class="ai-toggle" data-action="toggle-ev" data-did="${did}">展开</span>`;
   }
   html += '</div>';
+  return html;
+}
+
+// 供应商横评（评分前参考）：折叠块，收起看综合结论摘要，展开看完整
+function renderCrossReviewBlock() {
+  const text = state?.crossVendorAnalysis || '';
+  if (!text) return '';
+  const rec = extractCrossRecommendation(text);
+  const rest = extractCrossRest(text);
+  return `<div class="cross-box" data-action="toggle-cross" style="margin-bottom:14px;padding:14px 16px;border:1px solid var(--gold);border-radius:12px;background:var(--gold-soft);">
+    <div style="display:flex;align-items:center;justify-content:space-between;font-size:13px;color:var(--gold);font-weight:600;">
+      <span>供应商横评 · 评分参考</span>
+      <span class="cross-icon" style="font-size:11px;color:var(--muted);">展开 ▾</span>
+    </div>
+    <div class="cross-summary" style="color:var(--text);font-size:13px;margin-top:8px;line-height:1.7;">${formatCrossMd(rec)}</div>
+    <div class="cross-detail" style="display:none;margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);">${formatCrossMd(rest)}</div>
+  </div>`;
+}
+
+// 横评 markdown → HTML（简化版：标题/加粗/换行）
+function extractCrossRecommendation(text) {
+  if (!text) return '';
+  const t = String(text).trim();
+  const m = t.match(/综合结论[\s\S]*/);
+  let seg = m ? m[0] : '';
+  if (seg) {
+    const nextHead = seg.search(/\n#{2,4}\s/);
+    if (nextHead > 0) seg = seg.slice(0, nextHead);
+    return seg.trim();
+  }
+  const m2 = t.match(/(最推荐|综合推荐|推荐选择?|首选)[^。\n]{0,200}/);
+  if (m2) return m2[0].trim();
+  const firstLine = t.split(/\n/).find(l => l.trim()) || t;
+  return firstLine.trim().slice(0, 120);
+}
+function extractCrossRest(text) {
+  if (!text) return '';
+  const t = String(text).trim();
+  const idx = t.search(/综合结论/);
+  if (idx === -1) return '';
+  const after = t.slice(idx);
+  const nextHead = after.search(/\n#{2,4}\s/);
+  if (nextHead === -1) return '';
+  return t.slice(idx + nextHead).trim();
+}
+function formatCrossMd(md) {
+  if (!md) return '';
+  let html = escapeHtml(md);
+  html = html.replace(/^####\s+(.+)$/gm, '<strong style="color:var(--gold);display:block;margin:8px 0 4px;font-size:13px;">$1</strong>');
+  html = html.replace(/^###\s+(.+)$/gm, '<strong style="color:var(--gold);display:block;margin:8px 0 4px;font-size:13px;">$1</strong>');
+  html = html.replace(/^##\s+(.+)$/gm, '<strong style="color:var(--gold);display:block;margin:10px 0 4px;font-size:14px;">$1</strong>');
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/\n/g, '<br>');
   return html;
 }
 
@@ -479,6 +534,18 @@ function bindScoring() {
       const collapsed = ev.classList.toggle('collapsed');
       el.textContent = collapsed ? '展开' : '收起';
       if (collapsed) expandedEv.delete(did); else expandedEv.add(did);
+    });
+  });
+
+  // 横评折叠展开
+  app.querySelectorAll('[data-action="toggle-cross"]').forEach(box => {
+    box.addEventListener('click', () => {
+      const detail = box.querySelector('.cross-detail');
+      const icon = box.querySelector('.cross-icon');
+      if (!detail) return;
+      const shown = detail.style.display !== 'none';
+      detail.style.display = shown ? 'none' : 'block';
+      if (icon) icon.textContent = shown ? '展开 ▾' : '收起 ▴';
     });
   });
 }

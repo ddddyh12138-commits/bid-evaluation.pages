@@ -479,8 +479,7 @@ async function generateCrossVendorAnalysis() {
   const baseUrl = (cfg.baseUrl || 'https://open.bigmodel.cn/api/paas/v4').replace(/\/+$/, '');
   const model = cfg.model || 'glm-4.5-air';
 
-  const ranked = [...state.vendors].sort((a, b) => vendorTotal(b.id) - vendorTotal(a.id));
-  const anomalies = detectAnomalies();
+  const ranked = [...state.vendors].sort((a, b) => (vendorTotal(b.id) || 0) - (vendorTotal(a.id) || 0));
 
   const vendorBlocks = ranked.map((v, i) => {
     const ai = state.aiSuggestions[v.id] || {};
@@ -489,27 +488,23 @@ async function generateCrossVendorAnalysis() {
       return s ? `  - ${d.name}：建议 ${s.score}/${d.max}，依据：${s.evidence || '无'}` : '';
     }).filter(Boolean).join('\n');
     const qual = (state.qualResults[v.id] || []).map(q => `  - [${q.result}] ${q.req}${q.evidence ? '：' + q.evidence : ''}`).join('\n');
-    const anom = anomalies.filter(x => x.vid === v.id).map(x => `- ${x.label}：${x.desc}`).join('\n');
     return `### ${i + 1}. ${v.name}
-- 总分：${vendorTotal(v.id).toFixed(1)}（技术权重 ${vendorTechWeighted(v.id).toFixed(1)} + 商务分 ${vendorBusinessScore(v.id).toFixed(1)}）
-- CPM：¥${cpm(v.id).toFixed(2)}，播放量：${v.playCount || 0} 万
-- 各评委技术分：${state.judges.map(j => `${j.name} ${judgeTotalForVendor(v.id, j.id).toFixed(1)}`).join('、') || '暂无'}
-- AI 维度评价：
+- 商务分：${vendorBusinessScore(v.id).toFixed(1)}（承诺播放量 ${v.playCount || 0} 万，CPM ¥${cpm(v.id).toFixed(2)}）
+- AI 初评维度建议：
 ${aiLines || '  （未生成）'}
-${qual ? `- 资质核验：\n${qual}` : ''}
-${anom ? `- 风险提示：\n${anom}` : ''}`;
+${qual ? `- 资质核验：\n${qual}` : ''}`;
   }).join('\n\n');
 
-  const prompt = `你是资深评标专家。请根据以下所有供应商的评标数据，生成一段供应商横评分析，用于帮助决策者快速理解各家的相对位置。要求：
-1. 先给出综合结论：最推荐哪家、关键优势是什么。
+  const prompt = `你是资深评标专家。现在处于评标**评分前**阶段，评委还未打分。请根据以下所有供应商的投标材料、AI 初评维度建议、资质核验结果，生成一段供应商横评分析，供评委打分时参考。要求：
+1. 先给出综合结论：初步看来最推荐哪家、关键优势是什么（仅供参考，非最终结论）。
 2. 逐家或归类描述各供应商的定位（优势 / 劣势 / 适合场景）。
-3. 提示主要风险（性价比、履约、资质合规等）。
-4. 全文 400-800 字，用正式、客观的中文，引用具体数据。
+3. 提示评委打分时需要重点关注的风险点（性价比、履约、资质合规等）。
+4. 全文 400-800 字，用正式、客观的中文，引用材料中的具体点。不要编造评委分数（此时评委尚未打分）。
 
 项目：${state.project.name || '未命名'}
 预算：¥${(state.project.budget || 0).toLocaleString()}
 
-供应商横评数据：
+供应商横评数据（评分前）：
 ${vendorBlocks}`;
 
   const resp = await fetch(`${baseUrl}/chat/completions`, {
@@ -532,12 +527,11 @@ async function generateCrossVendorAnalysisFallback() {
   const cfg = state.aiConfig || {};
   if (!cfg.key) throw new Error('未配置 AI API Key');
   const summary = state.vendors.map(v => {
-    const total = vendorTotal(v.id).toFixed(1);
     const ai = state.aiSuggestions[v.id] || {};
     const aiBrief = state.dimensions.map(d => ai[d.id] ? `${d.name}=${ai[d.id].score}` : '').filter(Boolean).join('，');
-    return `- ${v.name}：总分 ${total}，CPM ¥${cpm(v.id).toFixed(2)}，${aiBrief || '无 AI 初评'}`;
+    return `- ${v.name}：商务分 ${vendorBusinessScore(v.id).toFixed(1)}，CPM ¥${cpm(v.id).toFixed(2)}，${aiBrief || '无 AI 初评'}`;
   }).join('\n');
-  const prompt = `你是评标专家，请基于以下供应商评分数据生成一段 400-800 字的中文横评分析，给出综合结论、各家优劣、风险提示：\n${summary}`;
+  const prompt = `你是评标专家，现在评分前阶段。请基于以下供应商的商务分与 AI 初评建议，生成一段 400-800 字的中文横评分析，给出综合结论、各家优劣、评委打分需关注的风险提示（评委尚未打分，不要编造分数）：\n${summary}`;
   const text = await aiChat(prompt, { temperature: 0.4 });
   if (!text) throw new Error('备用生成返回空内容');
   return text;
@@ -1519,7 +1513,7 @@ function viewScoring() {
   return `
     <section class="panel">
       <div class="panel-head"><div><h3>评分工作台</h3></div>
-        <button class="btn btn-ghost" data-action="gen-cross-analysis" ${crossAnalysisGenerating ? 'disabled' : ''} title="基于所有供应商数据生成横向对比分析">${crossAnalysisGenerating ? '横评生成中…' : '生成供应商横评'}</button>
+        <button class="btn btn-ghost" data-action="gen-cross-analysis" ${crossAnalysisGenerating ? 'disabled' : ''} title="基于所有供应商投标材料与 AI 初评生成横向对比（评分前供评委参考）">${crossAnalysisGenerating ? '横评生成中…' : '生成供应商横评'}</button>
       </div>
       <div class="vendor-tabs">
         ${sortedVendors().map(vv => `
@@ -1753,7 +1747,7 @@ function viewDashboard() {
     </section>
 
     <section class="panel">
-      <div class="panel-head"><div><h3>智能分析</h3><p>异常报价自动检测 + 评标报告自动生成 Word + 供应商横评</p></div>
+      <div class="panel-head"><div><h3>智能分析</h3><p>异常报价自动检测 + 评标报告自动生成 Word + 供应商横评（评分前参考）</p></div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
           <button class="btn btn-primary" data-action="gen-report" ${(reportGenerating || !allJudgesSigned()) ? 'disabled' : ''}>${reportGenerating ? '报告生成中…' : (allJudgesSigned() ? '生成评标报告' : '评分未收集完')}</button>
           <button class="btn" data-action="download-report" data-report-dl ${(lastReportDoc && !reportGenerating) ? '' : 'hidden'}>下载 Word</button>
@@ -1776,14 +1770,14 @@ function viewDashboard() {
         ${crossAnalysis
           ? `<div data-action="toggle-cross-detail" style="cursor:pointer;">
               <div style="display:flex;align-items:center;justify-content:space-between;font-size:13px;color:var(--gold);font-weight:600;">
-                <span>供应商横评 · 已生成</span>
+                <span>供应商横评（评分前参考） · 已生成</span>
                 <span class="toggle-icon" style="font-size:11px;color:var(--muted);">展开 ▾</span>
               </div>
               <div class="cross-vendor-summary" style="color:var(--text);font-size:13px;margin-top:8px;line-height:1.7;">${formatCrossSummary(extractCrossRecommendation(crossAnalysis))}</div>
             </div>
             <div class="cross-vendor-content" style="display:none;margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);">${formatCrossFull(extractCrossRest(crossAnalysis))}</div>`
-          : `<div style="font-size:13px;color:var(--gold);font-weight:600;margin-bottom:6px;">供应商横评</div>
-             <div class="anomaly-ok">${hasAiEnough ? '点击右上角「生成供应商横评」按钮生成横向对比分析。' : '所有供应商都上传材料后，可一键生成横评（评分工作台右上角按钮）。'}</div>`}
+          : `<div style="font-size:13px;color:var(--gold);font-weight:600;margin-bottom:6px;">供应商横评（评分前参考）</div>
+             <div class="anomaly-ok">${hasAiEnough ? '评分前供评委参考。点击右上角「生成供应商横评」按钮，基于各家投标材料与 AI 初评生成横向对比。' : '所有供应商都上传材料后，可一键生成横评（评分工作台右上角按钮），供评委打分前参考。'}</div>`}
       </div>
     </section>
 
