@@ -620,6 +620,106 @@ ${vendorBlocks}
   return { md: fullMd, doc };
 }
 
+// 用归档快照生成报告 Markdown（不依赖当前 state，供历史归档补生成/下载用）
+async function buildArchiveReportMd(arc) {
+  const cfg = state.aiConfig || {};
+  const apiKey = cfg.key;
+  const baseUrl = (cfg.baseUrl || 'https://open.bigmodel.cn/api/paas/v4').replace(/\/$/, '');
+  const model = cfg.model || 'glm-4.5-air';
+  if (!apiKey) throw new Error('未配置 AI API Key');
+  const dims = arc.dimensionsSnapshot || [];
+  const vendors = arc.vendorSnapshot || [];
+  const dimSpec = dims.map(d => `- ${d.name}（满分 ${d.max}）：${d.standard || ''}`).join('\n');
+  const ranked = [...vendors].sort((a, b) => (b.total || 0) - (a.total || 0));
+  const vendorBlocks = ranked.map((v, i) => {
+    return `### ${i + 1}. ${v.name}
+- 排名：第 ${i + 1} 名
+- 技术平均分：${(v.techAvg || 0).toFixed(1)}
+- 技术权重得分：${(v.techWeighted || 0).toFixed(1)}
+- 商务分：${(v.businessScore || 0).toFixed(1)}（承诺播放量 ${v.playCount || 0} 万，CPM ¥${(v.cpm || 0).toFixed(2)}）
+- 总分：${(v.total || 0).toFixed(1)}`;
+  }).join('\n\n');
+  const prompt = `你是资深评标专家。根据以下评标数据，生成一份正式的评标报告（Markdown 格式）。
+
+项目：${arc.name || '未命名项目'}
+预算：¥${(arc.budget || 0).toLocaleString()}
+评分维度：
+${dimSpec}
+
+供应商数据（按总分降序）：
+
+${vendorBlocks}
+
+报告结构（严格按此顺序，用 Markdown 二级标题）：
+1. ## 评标概述（项目背景、评标过程简述）
+2. ## 推荐中标候选人（明确给出第 1 名，说明理由）
+3. ## 分供应商点评（每家：核心优势 / 主要风险 / 资质合规提示）
+4. ## 评分汇总表（Markdown 表格：排名、供应商、技术平均、商务分、总分、CPM）
+5. ## 风险提示与建议（异常报价、资质缺口、履约风险等，无则说明"未发现重大风险"）
+
+用正式、客观的中文，引用具体数字和证据。`;
+  const resp = await fetch(`${baseUrl}/chat/completions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+    body: JSON.stringify({ model, messages: [{ role: 'user', content: prompt }], temperature: 0.4 }),
+  });
+  if (!resp.ok) {
+    const t = await resp.text().catch(() => '');
+    throw new Error(`大模型 ${resp.status}：${t.slice(0, 200)}`);
+  }
+  const data = await resp.json();
+  const content = (data.choices?.[0]?.message?.content || '').trim();
+  if (!content) throw new Error('大模型返回空内容');
+  // 追加评委评分段（用归档快照里的签名/评分）
+  const signSection = buildArchiveSignSectionMd(arc);
+  return signSection ? content + '\n\n' + signSection : content;
+}
+
+// 用归档快照生成「评委评分」段 Markdown
+function buildArchiveSignSectionMd(arc) {
+  const judges = arc.judgeSnapshot || [];
+  if (!judges.length) return '';
+  const dims = arc.dimensionsSnapshot || [];
+  const vendors = arc.vendorSnapshot || [];
+  const lines = ['## 评委评分'];
+  for (const j of judges) {
+    const t = j.signedAt ? new Date(j.signedAt).toLocaleString('zh-CN', { hour12: false, timeZone: 'Asia/Shanghai' }) : '';
+    // 归档快照没有 judgeId，用名字作为 [SIG:] 占位符 key（dl-archive-report/regen 时按名字匹配）
+    const sigKey = (state.judges || []).find(x => x.name === j.name)?.id || j.name;
+    lines.push(`### ${j.name}`);
+    lines.push('');
+    if (j.signature) lines.push(`[SIG:${sigKey}]`);
+    lines.push(`签名时间：${t}`);
+    lines.push('');
+    if (vendors.length && dims.length) {
+      const header = ['供应商', ...dims.map(d => d.name), '技术合计'];
+      lines.push('| ' + header.join(' | ') + ' |');
+      lines.push('| ' + header.map(() => '---').join(' | ') + ' |');
+      for (const v of vendors) {
+        const s = (j.scores || []).find(ss => ss.vendorName === v.name);
+        const vals = dims.map(d => {
+          const ds = (s?.dimScores || []).find(x => x.dimName === d.name);
+          const val = ds?.value;
+          return (val === undefined || val === null || val === '') ? '—' : Number(val).toFixed(1);
+        });
+        const tech = (s?.techTotal || 0).toFixed(1);
+        lines.push('| ' + [v.name, ...vals, tech].join(' | ') + ' |');
+      }
+      lines.push('');
+    }
+    if (vendors.length) {
+      lines.push('**总评：**');
+      for (const v of vendors) {
+        const s = (j.scores || []).find(ss => ss.vendorName === v.name);
+        const c = s?.overallComment || '';
+        lines.push(`- ${v.name}：${c || '（未填写总评）'}`);
+      }
+    }
+    lines.push('');
+  }
+  return lines.join('\n').trim();
+}
+
 // 生成「评委评分」段 Markdown：每个评委签名图 + 每家供应商各一级维度评分表 + 总评
 // 签名图通过占位符 [SIG:judgeId] 嵌入，buildReportDocx 再替换成 Word 图片
 function buildSignSectionMd() {
@@ -987,6 +1087,13 @@ ${text}
 async function archiveCurrentProject() {
   // 先拉一次最新 scores，确保评委刚提交的分数已到管理端，winner 计算正确
   try { await pullScores(); } catch (e) {}
+  // 归档前如果没有报告，静默生成一份，确保历史详情里能下载
+  try {
+    if (!lastReportMd) {
+      const { md } = await generateReportLocal();
+      lastReportMd = md;
+    }
+  } catch (e) { console.warn('归档前生成报告失败', e); }
   const ranked = [...state.vendors].sort((a, b) => vendorTotal(b.id) - vendorTotal(a.id));
   const winner = ranked[0] || null;
   const anomalies = detectAnomalies();
@@ -2055,7 +2162,7 @@ function bindViewEvents() {
   // 通用 action（view 内）
   viewEl.querySelectorAll('[data-action]').forEach(el => {
     const a = el.dataset.action;
-    if (['add-vendor','del-vendor','add-dim','del-dim','add-judge','del-judge','pick-vendor','pick-judge','parse-paste-modal','auto-end-modal','open-meeting','close-meeting','save-meeting','gen-vendor-ai','clear-vendor-ai','gen-report','gen-cross-analysis','download-report','archive-project','open-archive','del-archive','clone-from-archive','adopt-from-similar','filter-history','set-supplier-note','toggle-blacklist','copy-link','unlock-judge','advance-vendor','set-current-vendor','view-archive-cross','toggle-cross-detail','toggle-archive-cross'].includes(a)) {
+    if (['add-vendor','del-vendor','add-dim','del-dim','add-judge','del-judge','pick-vendor','pick-judge','parse-paste-modal','auto-end-modal','open-meeting','close-meeting','save-meeting','gen-vendor-ai','clear-vendor-ai','gen-report','gen-cross-analysis','download-report','archive-project','open-archive','del-archive','clone-from-archive','adopt-from-similar','filter-history','set-supplier-note','toggle-blacklist','copy-link','unlock-judge','advance-vendor','set-current-vendor','view-archive-cross','toggle-cross-detail','toggle-archive-cross','regen-archive-report','upload-archive-report'].includes(a)) {
       el.addEventListener('click', handleAction);
     }
   });
@@ -2313,7 +2420,7 @@ async function handleAction(e) {
     case 'archive-project': {
       if (!confirm('归档当前项目？归档后会将当前项目及其结果存入历史库，并清空当前项目数据以开始新项目。')) break;
       const statusEl = document.getElementById('reportStatus');
-      if (statusEl) statusEl.textContent = '归档中…';
+      if (statusEl) statusEl.textContent = '归档中（含生成报告，稍候）…';
       archiveCurrentProject().then(() => {
         // 归档后重置当前项目（维度/招标要求模板保留）
         state.project = { name: '', budget: 0 };
@@ -2433,12 +2540,26 @@ async function handleAction(e) {
     }
     case 'dl-archive-report': {
       const arc = (state.archives || []).find(a => a.id === el.dataset.aid);
-      if (!arc || !arc.reportMd) { alert('该归档没有评标报告'); break; }
+      if (!arc) break;
+      // 优先下载用户上传的原 Word 文件，没有再用 reportMd 现场生成
+      if (arc.reportFile?.dataUrl) {
+        try {
+          const r = await fetch(arc.reportFile.dataUrl);
+          const blob = await r.blob();
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = arc.reportFile.name || `${arc.name || '评标报告'}.docx`;
+          a.click();
+          URL.revokeObjectURL(url);
+        } catch (e) { alert('下载失败：' + e.message); }
+        break;
+      }
+      if (!arc.reportMd) { alert('该归档没有评标报告，请上传文件或重新生成'); break; }
       // 把归档里的评委签名图按 judgeId 聚合，供 [SIG:] 占位符查图
       const arcMeta = {};
       for (const j of (arc.judgeSnapshot || [])) {
         if (j.signature) {
-          // judgeSnapshot 没存 judgeId，用名字回匹配当前 state.judges 拿 id
           const jd = (state.judges || []).find(x => x.name === j.name);
           const jid = jd?.id || j.name;
           arcMeta[jid] = { signature: j.signature, signedAt: j.signedAt, locked: true };
@@ -2458,6 +2579,58 @@ async function handleAction(e) {
       } catch (e) {
         alert('下载失败：' + e.message);
       }
+      break;
+    }
+    case 'upload-archive-report': {
+      const arc = (state.archives || []).find(a => a.id === el.dataset.aid);
+      if (!arc) break;
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+      input.onchange = () => {
+        const file = input.files && input.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          // dataURL 形式存到归档，下载时直接还原原文件
+          arc.reportFile = { name: file.name, dataUrl: reader.result, size: file.size };
+          persistLocal(); saveStateCloud();
+          renderAll();
+          alert('已上传：' + file.name);
+        };
+        reader.onerror = () => alert('读取文件失败');
+        reader.readAsDataURL(file);
+      };
+      input.click();
+      break;
+    }
+    case 'regen-archive-report': {
+      const arc = (state.archives || []).find(a => a.id === el.dataset.aid);
+      if (!arc) break;
+      if (!state.aiConfig?.key) { alert('请先在「项目设置」配置 AI API Key 才能生成报告'); break; }
+      // 用归档快照临时重建报告所需的 state 上下文（不污染当前 state）
+      const tempMeta = {};
+      for (const j of (arc.judgeSnapshot || [])) {
+        const jd = (state.judges || []).find(x => x.name === j.name);
+        const jid = jd?.id || j.name;
+        tempMeta[jid] = { signature: j.signature || null, signedAt: j.signedAt || null, locked: true };
+      }
+      try {
+        const md = await buildArchiveReportMd(arc);
+        arc.reportMd = md;
+        persistLocal(); saveStateCloud();
+        const doc = await buildReportDocx(md, { judgeMeta: tempMeta });
+        const { Packer } = docx;
+        Packer.toBlob(doc).then(blob => {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `${arc.name || '评标报告'}-${new Date(arc.archivedAt || Date.now()).toISOString().slice(0,10)}.docx`;
+          a.click();
+          URL.revokeObjectURL(url);
+          renderAll();
+        }).catch(e => alert('下载失败：' + e.message));
+      } catch (e) { alert('生成失败：' + e.message); }
       break;
     }
     case 'copy-link':
@@ -2778,10 +2951,23 @@ function openArchiveDetail(aid) {
       <div class="archive-cross-content" style="display:none;margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);">${formatCrossFull(extractCrossRest(arc.crossVendorAnalysis))}</div>
     </div>` : ''}
 
-    ${arc.reportMd ? `<h4>评标报告</h4><div style="margin-top:4px;">
-      <details><summary>查看报告正文</summary><pre class="report-pre" style="max-height:40vh;margin-top:8px;">${escapeHtml(arc.reportMd)}</pre></details>
-      <button class="btn btn-primary" data-action="dl-archive-report" data-aid="${arc.id}" style="margin-top:8px;">下载 Word 报告</button>
-    </div>` : ''}
+    <h4>评标报告</h4>
+    ${(() => {
+      const hasFile = !!arc.reportFile;
+      const hasMd = !!arc.reportMd;
+      if (!hasFile && !hasMd) {
+        return `<div style="margin-top:4px;color:var(--muted);font-size:13px;">该归档未保存报告。
+          <button class="btn btn-ghost" data-action="upload-archive-report" data-aid="${arc.id}" style="margin-left:8px;font-size:12px;">上传 Word 文件</button>
+          <button class="btn btn-ghost" data-action="regen-archive-report" data-aid="${arc.id}" style="margin-left:4px;font-size:12px;">重新生成</button></div>`;
+      }
+      return `<div style="margin-top:4px;">
+        ${hasMd ? `<details><summary>查看报告正文</summary><pre class="report-pre" style="max-height:40vh;margin-top:8px;">${escapeHtml(arc.reportMd)}</pre></details>` : ''}
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+          <button class="btn btn-primary" data-action="dl-archive-report" data-aid="${arc.id}">下载 Word 报告</button>
+          <button class="btn btn-ghost" data-action="upload-archive-report" data-aid="${arc.id}" style="font-size:12px;">替换上传文件</button>
+        </div>
+      </div>`;
+    })()}
     ${arc.tenderReqs ? `<details><summary>招标要求</summary><pre class="report-pre" style="max-height:30vh;margin-top:8px;">${escapeHtml(arc.tenderReqs)}</pre></details>` : ''}
     ${(() => {
       const sims = similarArchives(arc);
