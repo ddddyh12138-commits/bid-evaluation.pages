@@ -212,7 +212,7 @@ function renderList() {
           <div class="tag">${sorted.length} 家供应商</div>
         </div>
       </div>
-      <button class="sign-submit-btn${complete ? '' : ' disabled'}" data-action="open-sign-modal" ${complete ? '' : 'disabled'}>
+      <button class="sign-submit-btn${complete ? '' : ' disabled'}" data-action="open-sign-modal">
         签名并提交
       </button>
     </div>
@@ -503,7 +503,7 @@ function isMobileLike() {
 
 function showAutoSignModal() {
   if (myMeta.locked) return;
-  if (!isAllScoringComplete()) { alert('还有未完成的打分/总评，请先全部填写完成'); return; }
+  // 允许在未全部填完时打开签名弹窗，便于查看进度（提交时再校验）
   const modal = document.getElementById('autoSignModal');
   if (!modal) return;
   // 手机端：隐藏二维码区，只留本机手写
@@ -887,6 +887,8 @@ function clearModalSig() {
 async function doModalSign() {
   if (myMeta.locked) { alert('已签名锁定'); return; }
   if (!modalSigInk) { alert('请手写签名'); return; }
+  // 提交前最终校验：所有打分/总评必须填完
+  if (!isAllScoringComplete()) { alert('还有未完成的打分/总评，请先全部填写完成'); return; }
   const btn = document.getElementById('autoSignGo');
   // 防重复点击：按钮已禁用则忽略
   if (btn && btn.disabled) return;
