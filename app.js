@@ -1032,41 +1032,48 @@ async function archiveCurrentProject() {
   };
   state.archives = state.archives || [];
   state.archives.unshift(archive);
-  updateSupplierRegistry(archive);
+  rebuildSupplierRegistry();
   persistLocal();
   saveStateCloud();
   return archive;
 }
 
-// 根据归档记录刷新供应商全局档案
-function updateSupplierRegistry(archive) {
-  state.supplierRegistry = state.supplierRegistry || {};
-  for (const vs of archive.vendorSnapshot) {
-    const key = String(vs.name).trim().toLowerCase();
-    if (!key) continue;
-    const existing = state.supplierRegistry[key];
-    const wins = vs.rank === 1 ? 1 : 0;
-    if (!existing) {
-      state.supplierRegistry[key] = {
-        name: vs.name,
-        totalBids: 1,
-        totalWins: wins,
-        avgTotal: vs.total,
-        avgTechAvg: vs.techAvg,
-        avgCpm: vs.cpm,
-        lastProject: archive.name,
-        notes: '',
-        blacklist: false,
-      };
-    } else {
-      existing.totalBids += 1;
-      existing.totalWins += wins;
-      existing.avgTotal = (existing.avgTotal * (existing.totalBids - 1) + vs.total) / existing.totalBids;
-      existing.avgTechAvg = (existing.avgTechAvg * (existing.totalBids - 1) + vs.techAvg) / existing.totalBids;
-      existing.avgCpm = (existing.avgCpm * (existing.totalBids - 1) + vs.cpm) / existing.totalBids;
-      existing.lastProject = archive.name;
+// 根据所有归档记录全量重算供应商全局档案（历史库删空则档案为空）
+function rebuildSupplierRegistry() {
+  const archives = state.archives || [];
+  const reg = {};
+  // 保留用户填的备注/黑名单（按供应商名小写 key 索引）
+  const oldReg = state.supplierRegistry || {};
+  for (const arc of archives) {
+    for (const vs of (arc.vendorSnapshot || [])) {
+      const key = String(vs.name).trim().toLowerCase();
+      if (!key) continue;
+      const wins = vs.rank === 1 ? 1 : 0;
+      const old = reg[key];
+      if (!old) {
+        const prev = oldReg[key];
+        reg[key] = {
+          name: vs.name,
+          totalBids: 1,
+          totalWins: wins,
+          avgTotal: vs.total,
+          avgTechAvg: vs.techAvg,
+          avgCpm: vs.cpm,
+          lastProject: arc.name,
+          notes: prev?.notes || '',
+          blacklist: prev?.blacklist || false,
+        };
+      } else {
+        old.totalBids += 1;
+        old.totalWins += wins;
+        old.avgTotal = (old.avgTotal * (old.totalBids - 1) + vs.total) / old.totalBids;
+        old.avgTechAvg = (old.avgTechAvg * (old.totalBids - 1) + vs.techAvg) / old.totalBids;
+        old.avgCpm = (old.avgCpm * (old.totalBids - 1) + vs.cpm) / old.totalBids;
+        old.lastProject = arc.name;
+      }
     }
   }
+  state.supplierRegistry = reg;
 }
 
 // 同品类相似项目推荐（按归档时间倒序，最多 5 条）
@@ -2350,8 +2357,9 @@ async function handleAction(e) {
     }
     case 'del-archive': {
       const aid = el.dataset.aid;
-      if (!confirm('删除该历史归档？供应商档案不会被回退。')) break;
+      if (!confirm('删除该历史归档？供应商档案会按剩余归档重新统计。')) break;
       state.archives = (state.archives || []).filter(a => a.id !== aid);
+      rebuildSupplierRegistry();
       saveStateAndRender();
       saveStateCloud();
       break;
