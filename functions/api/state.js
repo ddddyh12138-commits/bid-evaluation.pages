@@ -47,6 +47,7 @@ export async function onRequestGet({ request, env }) {
       judges: (state.judges || []).map(j => ({ id: j.id, name: j.name })),
       aiSuggestions: state.aiSuggestions || {},
       currentVendorId: state.currentVendorId || null,
+      currentVendorByDate: state.currentVendorByDate || {},
       myJudgeId: judge.id,
     };
     const maxPlay = Math.max(1, ...(state.vendors || []).map(x => x.playCount || 0));
