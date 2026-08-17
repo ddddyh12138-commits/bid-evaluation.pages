@@ -127,6 +127,8 @@ async function loadAll() {
       localStorage.removeItem(STORAGE_KEY);
     }
   }
+  // 按当前归档全量重算供应商档案，清掉历史库为空时的残留数据
+  rebuildSupplierRegistry();
   renderAll();
   // 2. 后台静默拉云端（评委打分）；不 await，不阻塞首屏
   pullCloud();
