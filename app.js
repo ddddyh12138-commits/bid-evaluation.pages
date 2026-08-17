@@ -614,31 +614,60 @@ function buildReportDocx(md) {
 }
 
 
-// 用 pdf.js 从 PDF 文件提取文字（仅文字版 PDF；扫描件会返回空）
-async function extractPdfText(file) {
+// 用 pdf.js 从 PDF 文件提取文字；文字层为空（扫描件/图片型 PDF）时自动回退到 OCR
+async function extractPdfText(file, onProgress) {
   if (typeof pdfjsLib === 'undefined') throw new Error('pdf.js 未加载');
   pdfjsLib.GlobalWorkerOptions.workerSrc = './pdf.worker.min.js';
   const buf = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
-  let out = '';
   const maxPages = Math.min(pdf.numPages, 30); // 最多 30 页，避免太大
+  const textPerPage = [];
+  let out = '';
   for (let i = 1; i <= maxPages; i++) {
     const page = await pdf.getPage(i);
     const c = await page.getTextContent();
     const text = c.items.map(it => it.str).join(' ').replace(/\s+/g, ' ').trim();
+    textPerPage.push(text);
     if (text) out += text + '\n';
   }
-  return out.trim();
+  out = out.trim();
+  if (out.length >= 20) return out; // 文字层够用，直接返回
+
+  // 文字层过少 → 视为扫描件，逐页渲染成图片做 OCR
+  if (typeof Tesseract === 'undefined') {
+    throw new Error('PDF 文字层为空（疑似扫描件），且 OCR 库未加载；请直接粘贴文字或上传文字版 PDF');
+  }
+  onProgress && onProgress('疑似扫描件，正在启用 OCR 识别（较慢，请等待）…');
+  let ocrOut = '';
+  for (let i = 1; i <= maxPages; i++) {
+    const prev = textPerPage[i - 1] || '';
+    if (prev.length >= 20) { ocrOut += prev + '\n'; continue; } // 已有文字层的不重复 OCR
+    onProgress && onProgress(`OCR 识别中：第 ${i}/${maxPages} 页…`);
+    const page = await pdf.getPage(i);
+    const viewport = page.getViewport({ scale: 2 });
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.ceil(viewport.width);
+    canvas.height = Math.ceil(viewport.height);
+    const ctx = canvas.getContext('2d');
+    await page.render({ canvasContext: ctx, viewport }).promise;
+    try {
+      const { data } = await Tesseract.recognize(canvas, 'chi_sim+eng');
+      ocrOut += (data.text || '') + '\n';
+    } catch (e) {
+      ocrOut += prev + '\n'; // OCR 失败至少保留文字层
+    }
+  }
+  return ocrOut.trim();
 }
 
 // 通用文件文字提取：PDF / Word / Excel 分流，其他按纯文本读
-async function extractFileText(file) {
+async function extractFileText(file, onProgress) {
   const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB，避免卡死标签页
   if (file.size && file.size > MAX_FILE_SIZE) {
     throw new Error(`文件过大（${(file.size/1024/1024).toFixed(1)}MB），请压缩到 20MB 以内再导入`);
   }
   const name = (file.name || '').toLowerCase();
-  if (name.endsWith('.pdf') || file.type === 'application/pdf') return extractPdfText(file);
+  if (name.endsWith('.pdf') || file.type === 'application/pdf') return extractPdfText(file, onProgress);
   if (name.endsWith('.docx') || name.endsWith('.doc')) {
     if (typeof mammoth === 'undefined') throw new Error('mammoth 未加载');
     const ab = await file.arrayBuffer();
@@ -1798,10 +1827,10 @@ function bindViewEvents() {
       const statusEl = viewEl.querySelector(`.ai-status[data-vid="${vid}"]`);
       if (statusEl) statusEl.textContent = '正在读取文件…';
       try {
-        const text = await extractFileText(file);
+        const text = await extractFileText(file, msg => { if (statusEl) statusEl.textContent = msg; });
         const ta = viewEl.querySelector(`textarea[data-action="set-vendor-materials"][data-vid="${vid}"]`);
         if (!text.trim()) {
-          if (statusEl) statusEl.textContent = '抽不到文字（可能是扫描件或图片型 PDF），请直接粘贴或上传文字版';
+          if (statusEl) statusEl.textContent = '抽不到文字（OCR 也无结果），请直接粘贴文字或换文字版文件';
           return;
         }
         if (ta) {
