@@ -248,10 +248,6 @@ function saveStateAndRender() {
   persistLocal();
   renderAll();
 }
-// 推 state 到云（非结构改动用）
-function syncToCloud() {
-  syncToCloud();
-}
 
 function debounceGenVendorAi(vid, delay = GENERATE_AI_DEBOUNCE_MS) {
   if (aiGenTimers[vid]) clearTimeout(aiGenTimers[vid]);
